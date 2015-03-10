@@ -474,33 +474,42 @@ namespace Microsoft.CodeAnalysis
                 throw new BadImageFormatException(string.Format(CodeAnalysisResources.InvalidAssemblyName, nameStr));
             }
 
-            string cultureName = (!culture.IsNil) ? reader.GetString(culture) : null;
+            string cultureName = culture.IsNil ? null : reader.GetString(culture);
             if (cultureName != null && !MetadataHelpers.IsValidMetadataIdentifier(cultureName))
             {
                 throw new BadImageFormatException(string.Format(CodeAnalysisResources.InvalidCultureName, cultureName));
             }
 
-            var hasPublicKey = (flags & AssemblyFlags.PublicKey) != 0;
-            var publicKeyOrToken = !publicKey.IsNil ? reader.GetBlobBytes(publicKey).AsImmutableOrNull() : default(ImmutableArray<byte>);
-            if (hasPublicKey)
+            ImmutableArray<byte> publicKeyOrToken = reader.GetBlobContent(publicKey);
+            bool hasPublicKey;
+
+            if (isReference)
             {
-                if (!MetadataHelpers.IsValidPublicKey(publicKeyOrToken))
+                hasPublicKey = (flags & AssemblyFlags.PublicKey) != 0;
+                if (hasPublicKey)
                 {
-                    throw new BadImageFormatException(CodeAnalysisResources.InvalidPublicKey);
+                    if (!MetadataHelpers.IsValidPublicKey(publicKeyOrToken))
+                    {
+                        throw new BadImageFormatException(CodeAnalysisResources.InvalidPublicKey);
+                    }
                 }
-            }
-            else if (isReference)
-            {
-                if (!publicKeyOrToken.IsDefaultOrEmpty && publicKeyOrToken.Length != AssemblyIdentity.PublicKeyTokenSize)
+                else
                 {
-                    throw new BadImageFormatException(CodeAnalysisResources.InvalidPublicKeyToken);
+                    if (!publicKeyOrToken.IsEmpty &&
+                        publicKeyOrToken.Length != AssemblyIdentity.PublicKeyTokenSize)
+                    {
+                        throw new BadImageFormatException(CodeAnalysisResources.InvalidPublicKeyToken);
+                    }
                 }
             }
             else
             {
-                // Assembly definitions do not contain public key tokens, but they may contain public key
-                // data without being marked as strong name signed (e.g. delay-signed assemblies).
-                publicKeyOrToken = default(ImmutableArray<byte>);
+                // Assembly definition, the flag AssemblyFlags.PublicKey is ignored 
+                hasPublicKey = !publicKeyOrToken.IsEmpty;
+                if (hasPublicKey && !MetadataHelpers.IsValidPublicKey(publicKeyOrToken))
+                {
+                    throw new BadImageFormatException(CodeAnalysisResources.InvalidPublicKey);
+                }
             }
 
             return new AssemblyIdentity(
