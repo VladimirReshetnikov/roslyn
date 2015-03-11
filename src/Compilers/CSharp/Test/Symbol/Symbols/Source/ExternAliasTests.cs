@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis.CSharp.Symbols;
@@ -362,6 +363,114 @@ class A : Bar::NS.Foo {}
 
             Assert.NotNull(alias1);
             Assert.Equal(SymbolKind.Alias, alias1.Kind);
+        }
+
+        [Fact]
+        [WorkItem(1027, "https://github.com/dotnet/roslyn/issues/1027")]
+        public void Bug1027()
+        {
+            #region Prepare source and identities for references
+
+            const string contractSource = @"
+namespace TestContractAssembly
+{
+    public interface IContract
+    {
+        int x { get; }
+    }
+}
+";
+            const string referenceAssemblyName = "TestContractAssembly";
+            var ver1 = new Version(1, 0, 0, 0);
+            var ver2 = new Version(2, 0, 0, 0);
+            Assert.NotEqual(ver1, ver2);
+
+            var asmId1 = new AssemblyIdentity(referenceAssemblyName, ver1);
+            var asmId2 = new AssemblyIdentity(referenceAssemblyName, ver2);
+            Assert.NotEqual(asmId1, asmId2);
+
+            #endregion
+
+            #region Create first reference
+
+            var comp1 = CreateCompilation(
+                    asmId1,
+                    new[] { contractSource },
+                    references: new[] { MscorlibRef },
+                    options: TestOptions.ReleaseDll);
+
+            Assert.Equal(asmId1, comp1.Assembly.Identity);
+            Assert.Equal(referenceAssemblyName, comp1.Assembly.Identity.Name);
+            Assert.Equal(ver1, comp1.Assembly.Identity.Version);
+
+            Assert.NotEqual(asmId2, comp1.Assembly.Identity);
+            Assert.NotEqual(ver2, comp1.Assembly.Identity.Version);
+
+            const string externAliasName1 = "Contracts1";
+            var ref1 = comp1.EmitToImageReference(aliases: ImmutableArray.Create(externAliasName1));
+
+            Assert.Equal(externAliasName1, ref1.Properties.Aliases.Single());
+            Assert.Equal(MetadataImageKind.Assembly, ref1.Properties.Kind);
+
+            #endregion
+
+            #region Create first reference
+
+            var comp2 = CreateCompilation(
+                asmId2,
+                new[] { contractSource },
+                references: new[] { MscorlibRef },
+                options: TestOptions.ReleaseDll);
+
+            Assert.Equal(asmId2, comp2.Assembly.Identity);
+            Assert.Equal(referenceAssemblyName, comp2.Assembly.Identity.Name);
+            Assert.Equal(ver2, comp2.Assembly.Identity.Version);
+
+            Assert.NotEqual(asmId1, comp2.Assembly.Identity);
+            Assert.NotEqual(ver1, comp2.Assembly.Identity.Version);
+
+            const string externAliasName2 = "Contracts1";
+            var ref2 = comp2.EmitToImageReference(aliases: ImmutableArray.Create(externAliasName2));
+
+            Assert.Equal(externAliasName2, ref2.Properties.Aliases.Single());
+            Assert.Equal(MetadataImageKind.Assembly, ref2.Properties.Kind);
+
+            #endregion
+
+            #region Create main compilation
+
+            const string source = @"
+extern alias Contracts1;
+extern alias Contracts2;
+
+using alias1 = Contracts1::TestContractAssembly;
+using alias2 = Contracts2::TestContractAssembly;
+";
+            var comp = CreateCompilationWithMscorlib(
+                new[] { source },
+                new[] { ref1, ref2 },
+                TestOptions.ReleaseDll);
+
+            var refs = comp.References;
+
+            var tree = comp.SyntaxTrees[0];
+            var model = comp.GetSemanticModel(tree);
+            var root = tree.GetRoot();
+            var nodes = root.DescendantNodes();
+            var using1 = nodes.OfType<UsingDirectiveSyntax>().First();
+            Assert.Equal("alias1", using1.Alias.Name.Identifier.ValueText);
+            Assert.IsAssignableFrom<AliasQualifiedNameSyntax>(using1.Name);
+
+            var name = (AliasQualifiedNameSyntax)using1.Name;
+            var aliasInfo = model.GetAliasInfo(name.Alias);
+            Assert.IsAssignableFrom<NamespaceSymbol>(aliasInfo.Target);
+
+            var ns1 = (NamespaceSymbol)aliasInfo.Target;
+            Assert.Equal(NamespaceKind.Module, ns1.NamespaceKind);
+
+            var ni = model.GetSymbolInfo(name);
+
+            #endregion
         }
 
         [WorkItem(546729, "DevDiv")]
