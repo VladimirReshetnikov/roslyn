@@ -385,8 +385,8 @@ namespace TestContractAssembly
             var ver2 = new Version(2, 0, 0, 0);
             Assert.NotEqual(ver1, ver2);
 
-            var asmId1 = new AssemblyIdentity(referenceAssemblyName, ver1);
-            var asmId2 = new AssemblyIdentity(referenceAssemblyName, ver2);
+            var asmId1 = new AssemblyIdentity(name: referenceAssemblyName, version: ver1, publicKeyOrToken: SigningTestHelpers.PublicKey, hasPublicKey: true, cultureName: "");
+            var asmId2 = new AssemblyIdentity(name: referenceAssemblyName, version: ver2, publicKeyOrToken: SigningTestHelpers.PublicKey, hasPublicKey: true, cultureName: "");
             Assert.NotEqual(asmId1, asmId2);
 
             #endregion
@@ -397,7 +397,7 @@ namespace TestContractAssembly
                     asmId1,
                     new[] { contractSource },
                     references: new[] { MscorlibRef },
-                    options: TestOptions.ReleaseDll);
+                    options: TestOptions.ReleaseDll.WithDelaySign(true));
 
             Assert.Equal(asmId1, comp1.Assembly.Identity);
             Assert.Equal(referenceAssemblyName, comp1.Assembly.Identity.Name);
@@ -414,13 +414,13 @@ namespace TestContractAssembly
 
             #endregion
 
-            #region Create first reference
+            #region Create second reference
 
             var comp2 = CreateCompilation(
                 asmId2,
                 new[] { contractSource },
                 references: new[] { MscorlibRef },
-                options: TestOptions.ReleaseDll);
+                options: TestOptions.ReleaseDll.WithDelaySign(true));
 
             Assert.Equal(asmId2, comp2.Assembly.Identity);
             Assert.Equal(referenceAssemblyName, comp2.Assembly.Identity.Name);
@@ -429,7 +429,7 @@ namespace TestContractAssembly
             Assert.NotEqual(asmId1, comp2.Assembly.Identity);
             Assert.NotEqual(ver1, comp2.Assembly.Identity.Version);
 
-            const string externAliasName2 = "Contracts1";
+            const string externAliasName2 = "Contracts2";
             var ref2 = comp2.EmitToImageReference(aliases: ImmutableArray.Create(externAliasName2));
 
             Assert.Equal(externAliasName2, ref2.Properties.Aliases.Single());
@@ -445,31 +445,66 @@ extern alias Contracts2;
 
 using alias1 = Contracts1::TestContractAssembly;
 using alias2 = Contracts2::TestContractAssembly;
-";
+
+partial class Contract : alias1.IContract, alias2.IContract
+{
+    int Contracts1::TestContractAssembly.IContract.x
+    {
+        get
+        {
+            return 1;
+        }
+    }
+    int Contracts2::TestContractAssembly.IContract.x
+    {
+        get
+        {
+            return 1;
+        }
+    }
+}";
             var comp = CreateCompilationWithMscorlib(
                 new[] { source },
                 new[] { ref1, ref2 },
                 TestOptions.ReleaseDll);
 
-            var refs = comp.References;
+            ImmutableArray<MetadataReference> metadataReferences = comp.References.ToImmutableArray();
+            Assert.Equal(3, metadataReferences.Count());
+
+            ImmutableArray<AssemblyIdentity> referencedAssemblyNames = comp.ReferencedAssemblyNames.ToImmutableArray();
+            Assert.Equal(3, referencedAssemblyNames.Length);
+
+            var module = comp.Assembly.Modules[0];
+            ImmutableArray<AssemblyIdentity> referencedAssemblyIdentities = module.ReferencedAssemblies;
+            ImmutableArray<AssemblySymbol> referencedAssemblySymbols = module.ReferencedAssemblySymbols;
+
+
+            Assert.Equal(3, referencedAssemblyIdentities.Length);
+            Assert.Equal(3, referencedAssemblySymbols.Length);
 
             var tree = comp.SyntaxTrees[0];
             var model = comp.GetSemanticModel(tree);
-            var root = tree.GetRoot();
-            var nodes = root.DescendantNodes();
-            var using1 = nodes.OfType<UsingDirectiveSyntax>().First();
-            Assert.Equal("alias1", using1.Alias.Name.Identifier.ValueText);
-            Assert.IsAssignableFrom<AliasQualifiedNameSyntax>(using1.Name);
 
-            var name = (AliasQualifiedNameSyntax)using1.Name;
-            var aliasInfo = model.GetAliasInfo(name.Alias);
-            Assert.IsAssignableFrom<NamespaceSymbol>(aliasInfo.Target);
+            // using alias1 = Contracts1::TestContractAssembly;
+            var usingAlias1 = tree.GetRoot().DescendantNodes().OfType<UsingDirectiveSyntax>().First();
+            Assert.Equal("alias1", usingAlias1.Alias.Name.Identifier.ValueText);
 
-            var ns1 = (NamespaceSymbol)aliasInfo.Target;
-            Assert.Equal(NamespaceKind.Module, ns1.NamespaceKind);
+            // Contracts1::TestContractAssembly
+            var aliasedName1 = (AliasQualifiedNameSyntax) usingAlias1.Name;
 
-            var ni = model.GetSymbolInfo(name);
+            // Contracts1
+            var aliasPartOfAliasedName1 = aliasedName1.Alias;
+            var targetNamespace1 = (NamespaceSymbol) model.GetAliasInfo(aliasPartOfAliasedName1).Target;
 
+            Assert.True(targetNamespace1.IsGlobalNamespace);
+            Assert.Equal(NamespaceKind.Module, targetNamespace1.NamespaceKind);
+            Assert.Equal("TestContractAssembly.dll", targetNamespace1.Extent.Module.Name);
+            Assert.Equal("TestContractAssembly", targetNamespace1.Extent.Module.ContainingAssembly.Name);
+            Assert.Equal(ver1, targetNamespace1.Extent.Module.ContainingAssembly.Identity.Version);
+
+            var ni = model.GetSymbolInfo(aliasedName1);
+
+            comp.VerifyDiagnostics();
             #endregion
         }
 
