@@ -28,6 +28,9 @@ namespace Microsoft.CodeAnalysis.Emit
     /// <summary>
     /// Common base class for C# and VB PE module builder.
     /// </summary>
+    /// <remarks>
+    /// TODO: It looks that the type parameter <typeparamref name="TNamespaceSymbol"/> is not used in this clas. Consider removing it.
+    /// </remarks>
     internal abstract class PEModuleBuilder<TCompilation, TSymbol, TSourceModuleSymbol, TModuleSymbol, TAssemblySymbol, TNamespaceSymbol, TTypeSymbol, TNamedTypeSymbol, TMethodSymbol, TSyntaxNode, TEmbeddedTypesManager, TModuleCompilationState> : CommonPEModuleBuilder, Cci.IModule, ITokenDeferral
         where TCompilation : Compilation
         where TSymbol : class
@@ -569,7 +572,7 @@ namespace Microsoft.CodeAnalysis.Emit
         {
             var result = _privateImplementationDetails;
 
-            if ((result == null) && this.SupportsPrivateImplClass)
+            if (result == null && this.SupportsPrivateImplClass)
             {
                 result = new PrivateImplementationDetails(
                         this,
@@ -584,22 +587,16 @@ namespace Microsoft.CodeAnalysis.Emit
 
                 if (Interlocked.CompareExchange(ref _privateImplementationDetails, result, null) != null)
                 {
-                    result = _privateImplementationDetails;
+                    return _privateImplementationDetails;
                 }
             }
 
             return result;
         }
 
-        internal PrivateImplementationDetails PrivateImplClass
-        {
-            get { return _privateImplementationDetails; }
-        }
+        internal PrivateImplementationDetails PrivateImplClass => _privateImplementationDetails;
 
-        internal override bool SupportsPrivateImplClass
-        {
-            get { return true; }
-        }
+        internal override bool SupportsPrivateImplClass => true;
 
         #endregion
 
@@ -612,12 +609,7 @@ namespace Microsoft.CodeAnalysis.Emit
             Debug.Assert(((IMethodSymbol)methodSymbol).PartialDefinitionPart == null); // Must be definition.
 
             Cci.IMethodBody body;
-
-            if (_methodBodyMap.TryGetValue(methodSymbol, out body))
-            {
-                return body;
-            }
-
+            _methodBodyMap.TryGetValue(methodSymbol, out body);
             return null;
         }
 
@@ -637,7 +629,7 @@ namespace Microsoft.CodeAnalysis.Emit
 
         public virtual void Dispatch(Cci.MetadataVisitor visitor)
         {
-            visitor.Visit((Cci.IModule)this);
+            visitor.Visit(this);
         }
 
         ushort Cci.IModule.MajorSubsystemVersion
@@ -650,21 +642,9 @@ namespace Microsoft.CodeAnalysis.Emit
             get { return (ushort)_serializationProperties.SubsystemVersion.Minor; }
         }
 
-        byte Cci.IModule.LinkerMajorVersion
-        {
-            get
-            {
-                return LinkerMajorVersion;
-            }
-        }
+        byte Cci.IModule.LinkerMajorVersion => LinkerMajorVersion;
 
-        byte Cci.IModule.LinkerMinorVersion
-        {
-            get
-            {
-                return LinkerMinorVersion;
-            }
-        }
+        byte Cci.IModule.LinkerMinorVersion => LinkerMinorVersion;
 
         IEnumerable<Cci.INamespaceTypeDefinition> Cci.IModule.GetTopLevelTypes(EmitContext context)
         {
@@ -694,26 +674,11 @@ namespace Microsoft.CodeAnalysis.Emit
             return IsPlatformType(typeRef, platformType);
         }
 
-        IEnumerable<Cci.ICustomAttribute> Cci.IModule.AssemblyAttributes
-        {
-            get
-            {
-                return GetSourceAssemblyAttributes();
-            }
-        }
+        IEnumerable<Cci.ICustomAttribute> Cci.IModule.AssemblyAttributes => GetSourceAssemblyAttributes();
 
-        IEnumerable<Cci.SecurityAttribute> Cci.IModule.AssemblySecurityAttributes
-        {
-            get
-            {
-                return GetSourceAssemblySecurityAttributes();
-            }
-        }
+        IEnumerable<Cci.SecurityAttribute> Cci.IModule.AssemblySecurityAttributes => GetSourceAssemblySecurityAttributes();
 
-        IEnumerable<Cci.ICustomAttribute> Cci.IModule.ModuleAttributes
-        {
-            get { return GetSourceModuleAttributes(); }
-        }
+        IEnumerable<Cci.ICustomAttribute> Cci.IModule.ModuleAttributes => GetSourceModuleAttributes();
 
         ImmutableArray<Cci.AssemblyReferenceAlias> Cci.IModule.GetAssemblyReferenceAliases(EmitContext context)
         {
