@@ -10,8 +10,8 @@ namespace Microsoft.CodeAnalysis.Text
 {
     internal sealed class ChangedText : SourceText
     {
-        private readonly SourceText _oldText;
-        private readonly SourceText _newText;
+        public SourceText OldText { get; }
+        public SourceText NewText { get; }
         private readonly ImmutableArray<TextChangeRange> _changes;
 
         public ChangedText(SourceText oldText, ImmutableArray<TextChangeRange> changeRanges, ImmutableArray<SourceText> segments)
@@ -21,54 +21,26 @@ namespace Microsoft.CodeAnalysis.Text
             Debug.Assert(!changeRanges.IsDefault);
             Debug.Assert(!segments.IsDefault);
 
-            _oldText = oldText;
-            _newText = segments.IsEmpty ? new StringText("", oldText.Encoding, checksumAlgorithm: oldText.ChecksumAlgorithm) : (SourceText)new CompositeText(segments);
+            OldText = oldText;
+            NewText = segments.IsEmpty ? new StringText("", oldText.Encoding, checksumAlgorithm: oldText.ChecksumAlgorithm) : (SourceText)new CompositeText(segments);
             _changes = changeRanges;
         }
 
-        public override Encoding Encoding
-        {
-            get { return _oldText.Encoding; }
-        }
+        public override Encoding Encoding => OldText.Encoding;
 
-        public SourceText OldText
-        {
-            get { return _oldText; }
-        }
+        public IEnumerable<TextChangeRange> Changes => _changes;
 
-        public SourceText NewText
-        {
-            get { return _newText; }
-        }
+        public override int Length => NewText.Length;
 
-        public IEnumerable<TextChangeRange> Changes
-        {
-            get { return _changes; }
-        }
+        public override char this[int position] => NewText[position];
 
-        public override int Length
-        {
-            get { return _newText.Length; }
-        }
+        public override string ToString(TextSpan span) => NewText.ToString(span);
 
-        public override char this[int position]
-        {
-            get { return _newText[position]; }
-        }
-
-        public override string ToString(TextSpan span)
-        {
-            return _newText.ToString(span);
-        }
-
-        public override SourceText GetSubText(TextSpan span)
-        {
-            return _newText.GetSubText(span);
-        }
+        public override SourceText GetSubText(TextSpan span) => NewText.GetSubText(span);
 
         public override void CopyTo(int sourceIndex, char[] destination, int destinationIndex, int count)
         {
-            _newText.CopyTo(sourceIndex, destination, destinationIndex, count);
+            NewText.CopyTo(sourceIndex, destination, destinationIndex, count);
         }
 
         public override IReadOnlyList<TextChangeRange> GetChangeRanges(SourceText oldText)
@@ -78,13 +50,13 @@ namespace Microsoft.CodeAnalysis.Text
                 throw new ArgumentNullException(nameof(oldText));
             }
 
-            if (ReferenceEquals(_oldText, oldText))
+            if (ReferenceEquals(OldText, oldText))
             {
                 // check whether the bases are same one
                 return _changes;
             }
 
-            if (_oldText.GetChangeRanges(oldText).Count == 0)
+            if (OldText.GetChangeRanges(oldText).Count == 0)
             {
                 // okay, the bases are different, but the contents might be same.
                 return _changes;
@@ -95,12 +67,12 @@ namespace Microsoft.CodeAnalysis.Text
                 return TextChangeRange.NoChanges;
             }
 
-            return ImmutableArray.Create(new TextChangeRange(new TextSpan(0, oldText.Length), _newText.Length));
+            return ImmutableArray.Create(new TextChangeRange(new TextSpan(0, oldText.Length), NewText.Length));
         }
 
         protected override TextLineCollection GetLinesCore()
         {
-            var oldLineInfo = _oldText.Lines;
+            var oldLineInfo = OldText.Lines;
             var lineStarts = ArrayBuilder<int>.GetInstance();
 
             lineStarts.Add(0);
@@ -117,7 +89,7 @@ namespace Microsoft.CodeAnalysis.Text
                 // if we've skipped a range, add
                 if (change.Span.Start > position)
                 {
-                    if (endsWithCR && _newText[position + delta] == '\n')
+                    if (endsWithCR && NewText[position + delta] == '\n')
                     {
                         lineStarts.RemoveLast();
                     }
@@ -126,9 +98,9 @@ namespace Microsoft.CodeAnalysis.Text
                     {
                         lineStarts.Add(oldLineInfo[i].Start + delta);
                     }
-                    endsWithCR = _oldText[change.Span.Start - 1] == '\r';
+                    endsWithCR = OldText[change.Span.Start - 1] == '\r';
                     // in case change is inserted between CR+LF we treat CR as line break alone, but this line break might be retracted and replaced with new one in case LF is inserted
-                    if (endsWithCR && change.Span.Start < _oldText.Length && _oldText[change.Span.Start] == '\n')
+                    if (endsWithCR && change.Span.Start < OldText.Length && OldText[change.Span.Start] == '\n')
                     {
                         lineStarts.Add(change.Span.Start + delta);
                     }
@@ -175,13 +147,13 @@ namespace Microsoft.CodeAnalysis.Text
                 delta += (change.NewLength - change.Span.Length);
             }
 
-            if (position < _oldText.Length)
+            if (position < OldText.Length)
             {
-                if (endsWithCR && _newText[position + delta] == '\n')
+                if (endsWithCR && NewText[position + delta] == '\n')
                 {
                     lineStarts.RemoveLast();
                 }
-                var lps = oldLineInfo.GetLinePositionSpan(TextSpan.FromBounds(position, _oldText.Length));
+                var lps = oldLineInfo.GetLinePositionSpan(TextSpan.FromBounds(position, OldText.Length));
                 for (int i = lps.Start.Line + 1; i <= lps.End.Line; i++)
                 {
                     lineStarts.Add(oldLineInfo[i].Start + delta);

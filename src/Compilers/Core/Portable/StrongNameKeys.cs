@@ -3,9 +3,7 @@
 using System;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using Roslyn.Utilities;
 
 namespace Microsoft.CodeAnalysis
 {
@@ -77,11 +75,9 @@ namespace Microsoft.CodeAnalysis
             {
                 return new StrongNameKeys(default(ImmutableArray<byte>), publicKey, null, null);
             }
-            else
-            {
-                return new StrongNameKeys(messageProvider.CreateDiagnostic(messageProvider.ERR_BadCompilationOptionValue, Location.None, 
-                    nameof(CompilationOptions.CryptoPublicKey), BitConverter.ToString(publicKey.ToArray())));
-            }
+
+            return new StrongNameKeys(messageProvider.CreateDiagnostic(messageProvider.ERR_BadCompilationOptionValue, Location.None, 
+                nameof(CompilationOptions.CryptoPublicKey), BitConverter.ToString(publicKey.ToArray())));
         }
 
         internal static StrongNameKeys Create(StrongNameProvider providerOpt, string keyFilePath, string keyContainerName, CommonMessageProvider messageProvider)
@@ -103,24 +99,12 @@ namespace Microsoft.CodeAnalysis
         /// <summary>
         /// True if the compilation can be signed using these keys.
         /// </summary>
-        internal bool CanSign
-        {
-            get
-            {
-                return !KeyPair.IsDefault || KeyContainer != null;
-            }
-        }
+        internal bool CanSign => !KeyPair.IsDefault || KeyContainer != null;
 
         /// <summary>
         /// True if a strong name can be created for the compilation using these keys.
         /// </summary>
-        internal bool CanProvideStrongName
-        {
-            get
-            {
-                return CanSign || !PublicKey.IsDefault;
-            }
-        }
+        internal bool CanProvideStrongName => CanSign || !PublicKey.IsDefault;
 
         internal static Diagnostic GetError(string keyFilePath, string keyContainerName, object message, CommonMessageProvider messageProvider)
         {

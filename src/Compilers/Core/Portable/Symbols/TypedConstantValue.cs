@@ -4,8 +4,6 @@ using System;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Reflection;
-using Microsoft.CodeAnalysis.CodeGen;
-using Microsoft.CodeAnalysis.Text;
 
 namespace Microsoft.CodeAnalysis
 {
@@ -32,13 +30,7 @@ namespace Microsoft.CodeAnalysis
         /// <summary>
         /// True if the constant represents a null literal.
         /// </summary>
-        public bool IsNull
-        {
-            get
-            {
-                return _value == null;
-            }
-        }
+        public bool IsNull => _value == null;
 
         public ImmutableArray<TypedConstant> Array
         {
@@ -57,10 +49,7 @@ namespace Microsoft.CodeAnalysis
             }
         }
 
-        public override int GetHashCode()
-        {
-            return _value?.GetHashCode() ?? 0;
-        }
+        public override int GetHashCode() => _value?.GetHashCode() ?? 0;
 
         public override bool Equals(object obj)
         {

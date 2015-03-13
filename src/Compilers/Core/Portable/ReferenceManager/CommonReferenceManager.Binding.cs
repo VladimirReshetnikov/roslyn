@@ -4,8 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Linq;
-using Microsoft.CodeAnalysis.Text;
 using Roslyn.Utilities;
 
 namespace Microsoft.CodeAnalysis
@@ -81,7 +79,7 @@ namespace Microsoft.CodeAnalysis
             // 1) The same references are resolved against the assemblies that we are given.
             // 2) The same assembly is used as the COR library.
 
-            TAssemblySymbol[] candidateInputAssemblySymbols = new TAssemblySymbol[totalAssemblies];
+            var candidateInputAssemblySymbols = new TAssemblySymbol[totalAssemblies];
 
             // If any assembly from assemblies array refers back to assemblyBeingBuilt,
             // we know that we cannot reuse symbols for any assemblies containing NoPia
@@ -178,35 +176,33 @@ namespace Microsoft.CodeAnalysis
                             match = false;
                             break;
                         }
+
+                        // Let's check if different assembly is used as the COR library.
+                        // It shouldn't be possible to get in this situation, but let's play safe.
+                        if (corLibraryIndex < 0)
+                        {
+                            // we don't have COR library.
+                            if (GetCorLibrary(candidateInputAssemblySymbols[j]) != null)
+                            {
+                                // but this assembly has
+                                // I am leaving the Assert here because it will likely indicate a bug somewhere.
+                                Debug.Assert(GetCorLibrary(candidateInputAssemblySymbols[j]) == null);
+                                match = false;
+                                break;
+                            }
+                        }
                         else
                         {
-                            // Let's check if different assembly is used as the COR library.
-                            // It shouldn't be possible to get in this situation, but let's play safe.
-                            if (corLibraryIndex < 0)
-                            {
-                                // we don't have COR library.
-                                if (GetCorLibrary(candidateInputAssemblySymbols[j]) != null)
-                                {
-                                    // but this assembly has
-                                    // I am leaving the Assert here because it will likely indicate a bug somewhere.
-                                    Debug.Assert(GetCorLibrary(candidateInputAssemblySymbols[j]) == null);
-                                    match = false;
-                                    break;
-                                }
-                            }
-                            else
-                            {
-                                // We can't be compiling corlib and have a corlib reference at the same time:
-                                Debug.Assert(corLibraryIndex != 0);
+                            // We can't be compiling corlib and have a corlib reference at the same time:
+                            Debug.Assert(corLibraryIndex != 0);
 
-                                // We have COR library, it should match COR library of the candidate.
-                                if (!ReferenceEquals(candidateInputAssemblySymbols[corLibraryIndex], GetCorLibrary(candidateInputAssemblySymbols[j])))
-                                {
-                                    // I am leaving the Assert here because it will likely indicate a bug somewhere.
-                                    Debug.Assert(candidateInputAssemblySymbols[corLibraryIndex] == null);
-                                    match = false;
-                                    break;
-                                }
+                            // We have COR library, it should match COR library of the candidate.
+                            if (!ReferenceEquals(candidateInputAssemblySymbols[corLibraryIndex], GetCorLibrary(candidateInputAssemblySymbols[j])))
+                            {
+                                // I am leaving the Assert here because it will likely indicate a bug somewhere.
+                                Debug.Assert(candidateInputAssemblySymbols[corLibraryIndex] == null);
+                                match = false;
+                                break;
                             }
                         }
                     }
@@ -490,22 +486,23 @@ namespace Microsoft.CodeAnalysis
 
                 // Linked references cannot be used as COR library.
                 // References containing NoPia local types also cannot be used as COR library.
-                if (!assemblies[i].IsLinked && assemblies[i].AssemblyReferences.Length == 0 &&
-                    !assemblies[i].ContainsNoPiaLocalTypes)
+                if (assemblies[i].IsLinked || assemblies[i].AssemblyReferences.Length > 0 ||
+                    assemblies[i].ContainsNoPiaLocalTypes)
                 {
-                    // We have referenced assembly that doesn't have assembly references,
-                    // check if it declares baseless System.Object.
+                    continue;
+                }
 
-                    if (assemblies[i].DeclaresTheObjectClass)
+                // We have referenced assembly that doesn't have assembly references,
+                // check if it declares baseless System.Object.
+                if (assemblies[i].DeclaresTheObjectClass)
+                {
+                    if (corLibraryCandidates == null)
                     {
-                        if (corLibraryCandidates == null)
-                        {
-                            corLibraryCandidates = ArrayBuilder<int>.GetInstance();
-                        }
-
-                        // This could be the COR library.
-                        corLibraryCandidates.Add(i);
+                        corLibraryCandidates = ArrayBuilder<int>.GetInstance();
                     }
+
+                    // This could be the COR library.
+                    corLibraryCandidates.Add(i);
                 }
             }
 
@@ -520,12 +517,10 @@ namespace Microsoft.CodeAnalysis
                     corLibraryCandidates.Free();
                     return result;
                 }
-                else
-                {
-                    // TODO: C# seems to pick the first one (but produces warnings when looking up predefined types).
-                    // See PredefinedTypes::Init(ErrorHandling*).
-                    corLibraryCandidates.Free();
-                }
+                
+                // TODO: C# seems to pick the first one (but produces warnings when looking up predefined types).
+                // See PredefinedTypes::Init(ErrorHandling*).
+                corLibraryCandidates.Free();
             }
 
             // If we have assembly being built and no references, 

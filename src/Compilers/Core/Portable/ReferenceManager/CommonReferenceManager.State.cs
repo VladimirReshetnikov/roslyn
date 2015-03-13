@@ -1,15 +1,10 @@
 ﻿// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading;
-using Microsoft.CodeAnalysis.Text;
 using Roslyn.Utilities;
 
 namespace Microsoft.CodeAnalysis
@@ -154,7 +149,7 @@ namespace Microsoft.CodeAnalysis
         /// Standalone modules referenced by the compilation (doesn't include the manifest module of the compilation).
         /// </summary>
         /// <remarks>
-        /// lazyReferencedModules[i] corresponds to lazyReferencedModulesReferences[i].
+        /// _lazyReferencedModules[i] corresponds to _lazyReferencedModulesReferences[i].
         /// </remarks>
         private ImmutableArray<PEModule> _lazyReferencedModules;
 
@@ -162,7 +157,7 @@ namespace Microsoft.CodeAnalysis
         /// References of standalone modules referenced by the compilation (doesn't include the manifest module of the compilation).
         /// </summary>
         /// <remarks>
-        /// lazyReferencedModules[i] corresponds to lazyReferencedModulesReferences[i].
+        /// _lazyReferencedModules[i] corresponds to _lazyReferencedModulesReferences[i].
         /// </remarks>
         private ImmutableArray<ModuleReferences<TAssemblySymbol>> _lazyReferencedModulesReferences;
 
@@ -176,7 +171,7 @@ namespace Microsoft.CodeAnalysis
         /// </summary>
         private ImmutableArray<UnifiedAssembly<TAssemblySymbol>> _lazyUnifiedAssemblies;
 
-        public CommonReferenceManager(string simpleAssemblyName, AssemblyIdentityComparer identityComparer, Dictionary<MetadataReference, MetadataOrDiagnostic> observedMetadata)
+        protected CommonReferenceManager(string simpleAssemblyName, AssemblyIdentityComparer identityComparer, Dictionary<MetadataReference, MetadataOrDiagnostic> observedMetadata)
         {
             Debug.Assert(simpleAssemblyName != null);
             Debug.Assert(identityComparer != null);
@@ -332,13 +327,7 @@ namespace Microsoft.CodeAnalysis
             Debug.Assert(compilation.MakeSourceAssemblySimpleName() == this.SimpleAssemblyName);
         }
 
-        internal bool IsBound
-        {
-            get
-            {
-                return _isBound != 0;
-            }
-        }
+        internal bool IsBound => _isBound != 0;
 
         /// <summary>
         /// Call only while holding <see cref="CommonReferenceManager.SymbolCacheAndReferenceManagerStateGuard"/>.
@@ -420,6 +409,7 @@ namespace Microsoft.CodeAnalysis
             int index;
             return ReferencedModuleIndexMap.TryGetValue(reference, out index) ? index : -1;
         }
+
         #endregion
     }
 }

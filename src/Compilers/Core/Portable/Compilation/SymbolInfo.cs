@@ -75,7 +75,7 @@ namespace Microsoft.CodeAnalysis
             : this()
         {
             this.Symbol = symbol;
-            _candidateSymbols = candidateSymbols.IsDefault ? ImmutableArray.Create<ISymbol>() : candidateSymbols;
+            _candidateSymbols = candidateSymbols.NullToEmpty();
 
 #if DEBUG
             const NamespaceKind NamespaceKindNamespaceGroup = (NamespaceKind)0;

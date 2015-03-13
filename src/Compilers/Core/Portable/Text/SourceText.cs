@@ -290,7 +290,7 @@ namespace Microsoft.CodeAnalysis.Text
         public abstract char this[int position] { get; }
 
         /// <summary>
-        /// Copy a range of characters from this SourceText to a destination array.
+        /// Copy a range of characters from this <see cref="SourceText"/> to a destination array.
         /// </summary>
         public abstract void CopyTo(int sourceIndex, char[] destination, int destinationIndex, int count);
 
@@ -435,7 +435,7 @@ namespace Microsoft.CodeAnalysis.Text
         }
 
         /// <summary>
-        /// Provides a string representation of the SourceText.
+        /// Provides a string representation of the <see cref="SourceText"/>.
         /// </summary>
         public override string ToString()
         {
@@ -443,7 +443,7 @@ namespace Microsoft.CodeAnalysis.Text
         }
 
         /// <summary>
-        /// Gets a string containing the characters in specified span.
+        /// Gets a string containing the characters in specified <paramref name="span"/>.
         /// </summary>
         /// <exception cref="ArgumentOutOfRangeException">When given span is outside of the text range.</exception>
         public virtual string ToString(TextSpan span)
@@ -472,7 +472,7 @@ namespace Microsoft.CodeAnalysis.Text
         #region Changes
 
         /// <summary>
-        /// Constructs a new SourceText from this text with the specified changes.
+        /// Constructs a new <see cref="SourceText"/> from this text with the specified <paramref name="changes"/>.
         /// </summary>
         public virtual SourceText WithChanges(IEnumerable<TextChange> changes)
         {
@@ -526,7 +526,7 @@ namespace Microsoft.CodeAnalysis.Text
         }
 
         /// <summary>
-        /// Constructs a new SourceText from this text with the specified changes.
+        /// Constructs a new <see cref="SourceText"/> from this text with the specified <paramref name="changes"/>.
         /// </summary>
         public SourceText WithChanges(params TextChange[] changes)
         {
@@ -534,7 +534,8 @@ namespace Microsoft.CodeAnalysis.Text
         }
 
         /// <summary>
-        /// Returns a new SourceText with the specified span of characters replaced by the new text.
+        /// Returns a new <see cref="SourceText"/> with the specified <paramref name="span"/> of characters
+        ///  replaced by the <paramref name="newText"/>.
         /// </summary>
         public SourceText Replace(TextSpan span, string newText)
         {
@@ -542,7 +543,7 @@ namespace Microsoft.CodeAnalysis.Text
         }
 
         /// <summary>
-        /// Returns a new SourceText with the specified range of characters replaced by the new text.
+        /// Returns a new <see cref="SourceText"/> with the specified range of characters replaced by the <paramref name="newText"/>.
         /// </summary>
         public SourceText Replace(int start, int length, string newText)
         {
@@ -565,10 +566,8 @@ namespace Microsoft.CodeAnalysis.Text
             {
                 return TextChangeRange.NoChanges;
             }
-            else
-            {
-                return ImmutableArray.Create(new TextChangeRange(new TextSpan(0, oldText.Length), this.Length));
-            }
+
+            return ImmutableArray.Create(new TextChangeRange(new TextSpan(0, oldText.Length), this.Length));
         }
 
         /// <summary>
@@ -887,16 +886,14 @@ namespace Microsoft.CodeAnalysis.Text
             return null;
         }
 
-        private class StaticContainer : SourceTextContainer
+        private sealed class StaticContainer : SourceTextContainer
         {
-            private readonly SourceText _text;
-
             public StaticContainer(SourceText text)
             {
-                _text = text;
+                CurrentText = text;
             }
 
-            public override SourceText CurrentText => _text;
+            public override SourceText CurrentText { get; }
 
             public override event EventHandler<TextChangeEventArgs> TextChanged
             {
