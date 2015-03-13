@@ -12,6 +12,10 @@ namespace Microsoft.CodeAnalysis
     [DebuggerDisplay("{GetDebuggerDisplay(), nq}")]
     public abstract class Location
     {
+        protected Location()
+        {
+        }
+
         /// <summary>
         /// Location kind (None/SourceFile/MetadataFile).
         /// </summary>

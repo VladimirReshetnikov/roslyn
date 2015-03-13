@@ -44,10 +44,6 @@ namespace Microsoft.CodeAnalysis.Emit
     {
         private readonly Cci.RootModuleType _rootModuleType = new Cci.RootModuleType();
 
-        private readonly TSourceModuleSymbol _sourceModule;
-        private readonly TCompilation _compilation;
-        private readonly OutputKind _outputKind;
-        private readonly EmitOptions _emitOptions;
         private readonly ModulePropertiesForSerialization _serializationProperties;
         private readonly ConcurrentCache<ValueTuple<string, string>, string> _normalizedPathsCache = new ConcurrentCache<ValueTuple<string, string>, string>(16);
 
@@ -104,13 +100,13 @@ namespace Microsoft.CodeAnalysis.Emit
             Debug.Assert(sourceModule != null);
             Debug.Assert(serializationProperties != null);
 
-            _compilation = compilation;
-            _sourceModule = sourceModule;
+            Compilation = compilation;
+            SourceModule = sourceModule;
             _serializationProperties = serializationProperties;
             this.ManifestResources = manifestResources;
-            _outputKind = outputKind;
+            OutputKind = outputKind;
             this.assemblySymbolMapper = assemblySymbolMapper;
-            _emitOptions = emitOptions;
+            EmitOptions = emitOptions;
             this.CompilationState = compilationState;
 
             if (compilation.IsCaseSensitive)
@@ -128,10 +124,7 @@ namespace Microsoft.CodeAnalysis.Emit
             this.CompilationState.Freeze();
         }
 
-        internal override EmitOptions EmitOptions
-        {
-            get { return _emitOptions; }
-        }
+        internal override EmitOptions EmitOptions { get; }
 
         internal abstract string ModuleName { get; }
         internal abstract string Name { get; }
@@ -148,10 +141,7 @@ namespace Microsoft.CodeAnalysis.Emit
         internal abstract Cci.INamedTypeReference GetSystemType(TSyntaxNode syntaxOpt, DiagnosticBag diagnostics);
         internal abstract Cci.INamedTypeReference GetSpecialType(SpecialType specialType, TSyntaxNode syntaxNodeOpt, DiagnosticBag diagnostics);
 
-        protected bool HaveDeterminedTopLevelTypes
-        {
-            get { return _namesOfTopLevelTypes != null; }
-        }
+        protected bool HaveDeterminedTopLevelTypes => _namesOfTopLevelTypes != null;
 
         protected bool ContainsTopLevelType(string fullEmittedName)
         {
@@ -239,59 +229,23 @@ namespace Microsoft.CodeAnalysis.Emit
             return Translate((TTypeSymbol)symbol, (TSyntaxNode)syntaxNodeOpt, diagnostics);
         }
 
-        internal OutputKind OutputKind
-        {
-            get
-            {
-                return _outputKind;
-            }
-        }
+        internal OutputKind OutputKind { get; }
 
-        internal TSourceModuleSymbol SourceModule
-        {
-            get
-            {
-                return _sourceModule;
-            }
-        }
+        internal TSourceModuleSymbol SourceModule { get; }
 
-        internal TCompilation Compilation
-        {
-            get
-            {
-                return _compilation;
-            }
-        }
+        internal TCompilation Compilation { get; }
 
-        internal override Compilation CommonCompilation
-        {
-            get
-            {
-                return _compilation;
-            }
-        }
+        internal override Compilation CommonCompilation => Compilation;
 
-        internal override CommonModuleCompilationState CommonModuleCompilationState
-        {
-            get
-            {
-                return this.CompilationState;
-            }
-        }
+        internal override CommonModuleCompilationState CommonModuleCompilationState => this.CompilationState;
 
         // General entry point method. May be a PE entry point or a submission entry point.
-        internal sealed override Cci.IMethodReference EntryPoint
-        {
-            get
-            {
-                return _entryPoint;
-            }
-        }
+        internal sealed override Cci.IMethodReference EntryPoint => _entryPoint;
 
         internal void SetEntryPoint(TMethodSymbol value)
         {
             Debug.Assert(value == null ||
-                ((object)((IMethodSymbol)value).ContainingModule == (object)_sourceModule && ReferenceEquals(value, ((IMethodSymbol)value).OriginalDefinition)));
+                ((object)((IMethodSymbol)value).ContainingModule == (object)SourceModule && ReferenceEquals(value, ((IMethodSymbol)value).OriginalDefinition)));
             _entryPoint = value;
         }
 
@@ -316,28 +270,30 @@ namespace Microsoft.CodeAnalysis.Emit
 
         private ImmutableArray<Cci.AssemblyReferenceAlias> CalculateAssemblyReferenceAliases(EmitContext context)
         {
-            var result = ArrayBuilder<Cci.AssemblyReferenceAlias>.GetInstance(_compilation.ExternalReferences.Length);
+            var result = ArrayBuilder<Cci.AssemblyReferenceAlias>.GetInstance(Compilation.ExternalReferences.Length);
 
-            var referenceManager = _compilation.GetBoundReferenceManager();
+            var referenceManager = Compilation.GetBoundReferenceManager();
 
             // Enumerate external references (#r's don't define aliases) to preserve the order.
-            foreach (MetadataReference reference in _compilation.ExternalReferences)
+            foreach (MetadataReference reference in Compilation.ExternalReferences)
             {
                 // duplicate references might have been skipped by the assembly binder:
 
                 IAssemblySymbol symbol;
                 ImmutableArray<string> aliases;
-                if (referenceManager.TryGetReferencedAssemblySymbol(reference, out symbol, out aliases))
+                if (!referenceManager.TryGetReferencedAssemblySymbol(reference, out symbol, out aliases))
                 {
-                    for (int i = 0; i < aliases.Length; i++)
-                    {
-                        string alias = aliases[i];
+                    continue;
+                }
 
-                        // filter out duplicates and global aliases:
-                        if (alias != MetadataReferenceProperties.GlobalAlias && aliases.IndexOf(alias, 0, i) < 0)
-                        {
-                            result.Add(new Cci.AssemblyReferenceAlias(alias, Translate(symbol, context.Diagnostics)));
-                        }
+                for (int i = 0; i < aliases.Length; i++)
+                {
+                    string alias = aliases[i];
+
+                    // filter out duplicates and global aliases:
+                    if (alias != MetadataReferenceProperties.GlobalAlias && aliases.IndexOf(alias, 0, i) < 0)
+                    {
+                        result.Add(new Cci.AssemblyReferenceAlias(alias, Translate(symbol, context.Diagnostics)));
                     }
                 }
             }
@@ -430,17 +386,17 @@ namespace Microsoft.CodeAnalysis.Emit
                 compileEmitTypes = defs.NestedTypes;
             }
 
-            if (declareTypes != null)
+            if (declareTypes == null)
             {
-                if (compileEmitTypes != null)
-                {
-                    return System.Linq.Enumerable.Concat(declareTypes, compileEmitTypes);
-                }
-
-                return declareTypes;
+                return compileEmitTypes;
             }
 
-            return compileEmitTypes;
+            if (compileEmitTypes != null)
+            {
+                return System.Linq.Enumerable.Concat(declareTypes, compileEmitTypes);
+            }
+
+            return declareTypes;
         }
 
         private SynthesizedDefinitions GetCacheOfSynthesizedDefinitions(TNamedTypeSymbol container, bool addIfNotFound = true)
@@ -452,11 +408,7 @@ namespace Microsoft.CodeAnalysis.Emit
             }
 
             SynthesizedDefinitions defs;
-            if (!_synthesizedDefs.TryGetValue(container, out defs))
-            {
-                defs = null;
-            }
-
+            _synthesizedDefs.TryGetValue(container, out defs);
             return defs;
         }
 
@@ -538,12 +490,7 @@ namespace Microsoft.CodeAnalysis.Emit
         public ImmutableArray<Cci.ITypeDefinitionMember> GetSynthesizedMembers(Cci.ITypeDefinition container)
         {
             SynthesizedDefinitions defs = GetCacheOfSynthesizedDefinitions((TNamedTypeSymbol)container, addIfNotFound: false);
-            if (defs == null)
-            {
-                return ImmutableArray<Cci.ITypeDefinitionMember>.Empty;
-            }
-
-            return defs.GetAllMembers();
+            return defs?.GetAllMembers() ?? ImmutableArray<Cci.ITypeDefinitionMember>.Empty;
         }
 
         #endregion
@@ -590,6 +537,7 @@ namespace Microsoft.CodeAnalysis.Emit
             {
                 ReferenceDependencyWalker.VisitReference(symbol, new EmitContext(this, syntaxNode, diagnostics));
             }
+
             return token;
         }
 
@@ -625,7 +573,7 @@ namespace Microsoft.CodeAnalysis.Emit
             {
                 result = new PrivateImplementationDetails(
                         this,
-                        _compilation.GetSubmissionSlotIndex(),
+                        Compilation.GetSubmissionSlotIndex(),
                         this.GetSpecialType(SpecialType.System_Object, syntaxNodeOpt, diagnostics),
                         this.GetSpecialType(SpecialType.System_ValueType, syntaxNodeOpt, diagnostics),
                         this.GetSpecialType(SpecialType.System_Byte, syntaxNodeOpt, diagnostics),
@@ -794,7 +742,7 @@ namespace Microsoft.CodeAnalysis.Emit
         {
             get
             {
-                return _outputKind.IsApplication() ? _entryPoint : null;
+                return OutputKind.IsApplication() ? _entryPoint : null;
             }
         }
 
@@ -910,7 +858,7 @@ namespace Microsoft.CodeAnalysis.Emit
         {
             get
             {
-                switch (_outputKind)
+                switch (OutputKind)
                 {
                     case OutputKind.ConsoleApplication:
                         return Cci.ModuleKind.ConsoleApplication;
@@ -927,7 +875,7 @@ namespace Microsoft.CodeAnalysis.Emit
                         return Cci.ModuleKind.DynamicallyLinkedLibrary;
 
                     default:
-                        throw ExceptionUtilities.UnexpectedValue(_outputKind);
+                        throw ExceptionUtilities.UnexpectedValue(OutputKind);
                 }
             }
         }
@@ -1106,7 +1054,7 @@ namespace Microsoft.CodeAnalysis.Emit
 
         internal string NormalizeDebugDocumentPath(string path, string basePath)
         {
-            var resolver = _compilation.Options.SourceReferenceResolver;
+            var resolver = Compilation.Options.SourceReferenceResolver;
             if (resolver == null)
             {
                 return path;
