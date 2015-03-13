@@ -50,10 +50,7 @@ namespace Roslyn.Utilities
 
         public void Stat(out STATSTG pstatstg, int grfStatFlag)
         {
-            pstatstg = new STATSTG
-            {
-                cbSize = _stream.Length
-            };
+            pstatstg = new STATSTG { cbSize = _stream.Length };
         }
 
         public unsafe void Write(byte[] pv, int cb, IntPtr pcbWritten)

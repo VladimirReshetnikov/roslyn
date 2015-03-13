@@ -475,7 +475,6 @@ namespace Microsoft.CodeAnalysis.CodeGen
         /// If a label points to a block that does nothing other than passing to block X,
         /// replaces target label's block with block X.
         /// </summary>
-        /// 
         private bool OptimizeLabels()
         {
             // since unconditional labels can move outside try blocks, but conditional cannot,
@@ -502,35 +501,39 @@ namespace Microsoft.CodeAnalysis.CodeGen
 
                     Debug.Assert(!IsSpecialEndHandlerBlock(targetBlock));
 
-                    if (targetBlock.HasNoRegularInstructions)
+                    if (!targetBlock.HasNoRegularInstructions)
                     {
-                        BasicBlock targetsTarget = null;
-                        switch (targetBlock.BranchCode)
-                        {
-                            case ILOpCode.Br:
-                                targetsTarget = targetBlock.BranchBlock;
-                                break;
+                        continue;
+                    }
 
-                            case ILOpCode.Nop:
-                                targetsTarget = targetBlock.NextBlock;
-                                break;
-                        }
+                    BasicBlock targetsTarget = null;
+                    switch (targetBlock.BranchCode)
+                    {
+                        case ILOpCode.Br:
+                            targetsTarget = targetBlock.BranchBlock;
+                            break;
 
-                        if ((targetsTarget != null) && (targetsTarget != targetBlock))
-                        {
-                            var currentHandler = targetBlock.EnclosingHandler;
-                            var newHandler = targetsTarget.EnclosingHandler;
+                        case ILOpCode.Nop:
+                            targetsTarget = targetBlock.NextBlock;
+                            break;
+                    }
 
-                            // forward the label if can be done without leaving current handler
-                            if (currentHandler == newHandler)
-                            {
-                                _labelInfos[label] = labelInfo.WithNewTarget(targetsTarget);
-                                madeChanges = true;
+                    if (targetsTarget == null || targetsTarget == targetBlock)
+                    {
+                        continue;
+                    }
 
-                                // since we modified at least one label we want to try again.
-                                done = false;
-                            }
-                        }
+                    var currentHandler = targetBlock.EnclosingHandler;
+                    var newHandler = targetsTarget.EnclosingHandler;
+
+                    // forward the label if can be done without leaving current handler
+                    if (currentHandler == newHandler)
+                    {
+                        _labelInfos[label] = labelInfo.WithNewTarget(targetsTarget);
+                        madeChanges = true;
+
+                        // since we modified at least one label we want to try again.
+                        done = false;
                     }
                 }
             } while (!done);
@@ -562,35 +565,39 @@ namespace Microsoft.CodeAnalysis.CodeGen
 
                     Debug.Assert(!IsSpecialEndHandlerBlock(targetBlock));
 
-                    if (targetBlock.HasNoRegularInstructions)
+                    if (!targetBlock.HasNoRegularInstructions)
                     {
-                        BasicBlock targetsTarget = null;
-                        switch (targetBlock.BranchCode)
-                        {
-                            case ILOpCode.Br:
-                                targetsTarget = targetBlock.BranchBlock;
-                                break;
+                        continue;
+                    }
 
-                            case ILOpCode.Nop:
-                                targetsTarget = targetBlock.NextBlock;
-                                break;
-                        }
+                    BasicBlock targetsTarget = null;
+                    switch (targetBlock.BranchCode)
+                    {
+                        case ILOpCode.Br:
+                            targetsTarget = targetBlock.BranchBlock;
+                            break;
 
-                        if ((targetsTarget != null) && (targetsTarget != targetBlock))
-                        {
-                            var currentHandler = targetBlock.EnclosingHandler;
-                            var newHandler = targetsTarget.EnclosingHandler;
+                        case ILOpCode.Nop:
+                            targetsTarget = targetBlock.NextBlock;
+                            break;
+                    }
 
-                            // can skip the jump if it is in the same try scope
-                            if (CanMoveLabelToAnotherHandler(currentHandler, newHandler))
-                            {
-                                _labelInfos[label] = labelInfo.WithNewTarget(targetsTarget);
-                                madeChanges = true;
+                    if (targetsTarget == null || targetsTarget == targetBlock)
+                    {
+                        continue;
+                    }
 
-                                // since we modified at least one label we want to try again.
-                                done = false;
-                            }
-                        }
+                    var currentHandler = targetBlock.EnclosingHandler;
+                    var newHandler = targetsTarget.EnclosingHandler;
+
+                    // can skip the jump if it is in the same try scope
+                    if (CanMoveLabelToAnotherHandler(currentHandler, newHandler))
+                    {
+                        _labelInfos[label] = labelInfo.WithNewTarget(targetsTarget);
+                        madeChanges = true;
+
+                        // since we modified at least one label we want to try again.
+                        done = false;
                     }
                 }
             } while (!done);
@@ -599,7 +606,7 @@ namespace Microsoft.CodeAnalysis.CodeGen
         }
 
         private static bool CanMoveLabelToAnotherHandler(ExceptionHandlerScope currentHandler,
-                                                 ExceptionHandlerScope newHandler)
+                                                         ExceptionHandlerScope newHandler)
         {
             // Generally, asuming already valid code that contains "LABEL1: goto LABEL2" 
             // we can substitute LABEL1 for LABEL2 so that the branches go directly to 
@@ -649,9 +656,11 @@ namespace Microsoft.CodeAnalysis.CodeGen
         }
 
         /// <summary>
-        /// Drops blocks that are not reachable
-        /// Returns true if any blocks were dropped
+        /// Drops blocks that are not reachable.
         /// </summary>
+        /// <returns>
+        /// Returns true if any blocks were dropped.
+        /// </returns>
         private bool DropUnreachableBlocks()
         {
             bool dropped = false;
@@ -682,7 +691,7 @@ namespace Microsoft.CodeAnalysis.CodeGen
         /// </summary>
         private void MarkAllBlocksUnreachable()
         {
-            //sweep unreachable
+            // sweep unreachable
             var current = leaderBlock;
             while (current != null)
             {
@@ -705,8 +714,7 @@ namespace Microsoft.CodeAnalysis.CodeGen
         /// Rewrite any block marked as BlockedByFinally as an "infinite loop".
         /// </summary>
         /// <remarks>
-        /// Matches the code generated by the native compiler in
-        /// ILGENREC::AdjustBlockedLeaveTargets.
+        /// Matches the code generated by the native compiler in ILGENREC::AdjustBlockedLeaveTargets.
         /// </remarks>
         private void RewriteSpecialBlocks()
         {
@@ -733,6 +741,7 @@ namespace Microsoft.CodeAnalysis.CodeGen
                         current.SetBranch(null, ILOpCode.Nop);
                     }
                 }
+
                 current = current.NextBlock;
             }
 
@@ -769,9 +778,8 @@ namespace Microsoft.CodeAnalysis.CodeGen
         /// <summary>
         /// Returns true if any branches were optimized (that does not include shortening)
         /// We need this because optimizing a branch may result in unreachable code that needs to be eliminated.
-        /// 
-        /// === Example:
-        /// 
+        /// <example>
+        /// <code>
         /// x = 1;
         /// 
         /// if (blah)
@@ -802,7 +810,8 @@ namespace Microsoft.CodeAnalysis.CodeGen
         /// // this ret unreachable now! 
         /// // even worse - empty stack is assumed thus the ret is illegal.
         /// ret;    
-        /// 
+        /// </code>
+        /// </example>
         /// </summary>
         private bool ComputeOffsetsAndAdjustBranches()
         {
@@ -954,44 +963,46 @@ namespace Microsoft.CodeAnalysis.CodeGen
 
         private void RealizeSequencePoints()
         {
-            if (this.SeqPointsOpt != null)
+            if (this.SeqPointsOpt == null)
             {
-                // we keep track of the latest sequence point location to make sure 
-                // we don't emit multiple sequence points for the same location
-                int lastOffset = -1;
+                return;
+            }
 
-                ArrayBuilder<RawSequencePoint> seqPoints = ArrayBuilder<RawSequencePoint>.GetInstance();
-                foreach (var seqPoint in this.SeqPointsOpt)
+            // we keep track of the latest sequence point location to make sure 
+            // we don't emit multiple sequence points for the same location
+            int lastOffset = -1;
+
+            ArrayBuilder<RawSequencePoint> seqPoints = ArrayBuilder<RawSequencePoint>.GetInstance();
+            foreach (var seqPoint in this.SeqPointsOpt)
+            {
+                int offset = this.GetILOffsetFromMarker(seqPoint.ILMarker);
+                if (offset >= 0)
                 {
-                    int offset = this.GetILOffsetFromMarker(seqPoint.ILMarker);
-                    if (offset >= 0)
+                    // valid IL offset
+                    if (lastOffset != offset)
                     {
-                        // valid IL offset
-                        if (lastOffset != offset)
-                        {
-                            Debug.Assert(lastOffset < offset);
-                            // if there are any sequence points, there must
-                            // be a sequence point at offset 0.
-                            Debug.Assert((lastOffset >= 0) || (offset == 0));
-                            // the first sequence point on tree/offset location
-                            lastOffset = offset;
-                            seqPoints.Add(seqPoint);
-                        }
-                        else
-                        {
-                            // override previous sequence point at the same location
-                            seqPoints[seqPoints.Count - 1] = seqPoint;
-                        }
+                        Debug.Assert(lastOffset < offset);
+                        // if there are any sequence points, there must
+                        // be a sequence point at offset 0.
+                        Debug.Assert((lastOffset >= 0) || (offset == 0));
+                        // the first sequence point on tree/offset location
+                        lastOffset = offset;
+                        seqPoints.Add(seqPoint);
+                    }
+                    else
+                    {
+                        // override previous sequence point at the same location
+                        seqPoints[seqPoints.Count - 1] = seqPoint;
                     }
                 }
-
-                if (seqPoints.Count > 0)
-                {
-                    this.RealizedSequencePoints = SequencePointList.Create(seqPoints, this);
-                }
-
-                seqPoints.Free();
             }
+
+            if (seqPoints.Count > 0)
+            {
+                this.RealizedSequencePoints = SequencePointList.Create(seqPoints, this);
+            }
+
+            seqPoints.Free();
         }
 
         /// <summary>
@@ -999,7 +1010,7 @@ namespace Microsoft.CodeAnalysis.CodeGen
         /// </summary>
         internal void DefineSequencePoint(SyntaxTree syntaxTree, TextSpan span)
         {
-            var curBlock = GetCurrentBlock();
+            GetCurrentBlock();
             _lastSeqPointTree = syntaxTree;
 
             if (this.SeqPointsOpt == null)
@@ -1054,6 +1065,7 @@ namespace Microsoft.CodeAnalysis.CodeGen
         internal void DefineInitialHiddenSequencePoint()
         {
             Debug.Assert(_initialHiddenSequencePointMarker < 0);
+
             // Create a marker for the sequence point. The actual sequence point
             // is created when the first non-hidden sequence is created since we
             // won't know the syntax tree before then.
@@ -1101,8 +1113,8 @@ namespace Microsoft.CodeAnalysis.CodeGen
                 _instructionCountAtLastLabel = _emitState.InstructionsEmitted;
             }
 
-            EndBlock();  //blocks should not cross scope boundaries.
-            var scope = _scopeManager.OpenScope(scopeType, exceptionType);
+            EndBlock();  // blocks should not cross scope boundaries.
+            _scopeManager.OpenScope(scopeType, exceptionType);
 
             // Exception handler scopes must have a leader block, even
             // if the exception handler is empty, and created before any
@@ -1157,7 +1169,7 @@ namespace Microsoft.CodeAnalysis.CodeGen
         internal void CloseLocalScope()
         {
             _scopeManager.ClosingScope(this);
-            EndBlock();  //blocks should not cross scope boundaries.
+            EndBlock();  // blocks should not cross scope boundaries.
             _scopeManager.CloseScope(this);
         }
 
@@ -1220,8 +1232,10 @@ namespace Microsoft.CodeAnalysis.CodeGen
                 {
                     return false;
                 }
+
                 current = current.NextBlock;
             }
+
             return true;
         }
 
@@ -1265,7 +1279,7 @@ namespace Microsoft.CodeAnalysis.CodeGen
             if (visType != null)
             {
                 var method = visType.GetTypeInfo().GetDeclaredMethod("ILBuilderToString");
-                return (string)method.Invoke(null, new object[] { this, null, null });
+                return (string)method.Invoke(null, new[] { this, null, null });
             }
 #endif
 

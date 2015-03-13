@@ -484,20 +484,22 @@ namespace Microsoft.CodeAnalysis.Emit
 
             foreach (var methodDef in typeDef.GetMethods(this.Context))
             {
-                if (this.AddDefIfNecessary(_methodDefs, methodDef))
+                if (!this.AddDefIfNecessary(_methodDefs, methodDef))
                 {
-                    foreach (var paramDef in this.GetParametersToEmit(methodDef))
-                    {
-                        _parameterDefs.Add(paramDef);
-                        _parameterDefList.Add(KeyValuePair.Create(methodDef, paramDef));
-                    }
+                    continue;
+                }
 
-                    if (methodDef.GenericParameterCount > 0)
+                foreach (var paramDef in this.GetParametersToEmit(methodDef))
+                {
+                    _parameterDefs.Add(paramDef);
+                    _parameterDefList.Add(KeyValuePair.Create(methodDef, paramDef));
+                }
+
+                if (methodDef.GenericParameterCount > 0)
+                {
+                    foreach (var typeParameter in methodDef.GenericParameters)
                     {
-                        foreach (var typeParameter in methodDef.GenericParameters)
-                        {
-                            _genericParameters.Add(typeParameter);
-                        }
+                        _genericParameters.Add(typeParameter);
                     }
                 }
             }
@@ -865,7 +867,7 @@ namespace Microsoft.CodeAnalysis.Emit
 #if DEBUG
             // The following tables are either represented in the EncMap
             // or specifically ignored. The rest should be empty.
-            var handledTables = new TableIndex[]
+            var handledTables = new[]
             {
                 TableIndex.Module,
                 TableIndex.TypeRef,
@@ -1050,6 +1052,7 @@ namespace Microsoft.CodeAnalysis.Emit
             public delegate bool TryGetExistingIndex(T item, out uint index);
 
             private readonly TryGetExistingIndex _tryGetExistingIndex;
+
             // Map of row id to def for all defs. This could be an array indexed
             // by row id but the array could be large and sparsely populated
             // if there are many defs in the previous generation but few
@@ -1069,6 +1072,7 @@ namespace Microsoft.CodeAnalysis.Emit
                 {
                     return true;
                 }
+
                 if (_tryGetExistingIndex(item, out index))
                 {
 #if DEBUG
@@ -1078,17 +1082,11 @@ namespace Microsoft.CodeAnalysis.Emit
                     _map[index] = item;
                     return true;
                 }
+
                 return false;
             }
 
-            public T this[int index]
-            {
-                get
-                {
-                    uint rowId = (uint)index + 1;
-                    return _map[rowId];
-                }
-            }
+            public T this[int index] =>  _map[(uint)index + 1];
 
             public void Add(T item)
             {
@@ -1229,10 +1227,12 @@ namespace Microsoft.CodeAnalysis.Emit
             {
                 return true;
             }
+
             if (_previousGeneration.TypeToEventMap.TryGetValue(item, out index))
             {
                 return true;
             }
+
             index = 0;
             return false;
         }
@@ -1243,6 +1243,7 @@ namespace Microsoft.CodeAnalysis.Emit
             {
                 return true;
             }
+
             if (_previousGeneration.TypeToPropertyMap.TryGetValue(item, out index))
             {
                 return true;
@@ -1257,10 +1258,12 @@ namespace Microsoft.CodeAnalysis.Emit
             {
                 return true;
             }
+
             if (_previousGeneration.MethodImpls.TryGetValue(item, out index))
             {
                 return true;
             }
+
             index = 0;
             return false;
         }
@@ -1327,10 +1330,12 @@ namespace Microsoft.CodeAnalysis.Emit
                 {
                     return true;
                 }
+
                 if (_tryGetExistingIndex(item, out index))
                 {
                     return true;
                 }
+
                 index = 0;
                 return false;
             }
@@ -1361,10 +1366,12 @@ namespace Microsoft.CodeAnalysis.Emit
                 {
                     return true;
                 }
+
                 if (_writer.TryGetExistingMethodImplIndex(item, out index))
                 {
                     return true;
                 }
+
                 index = 0;
                 return false;
             }
@@ -1387,10 +1394,6 @@ namespace Microsoft.CodeAnalysis.Emit
                 : base(writer)
             {
                 _changes = writer._changes;
-            }
-
-            private void ReportReferenceToAddedSymbolDefinedInExternalAssembly(IReference symbol)
-            {
             }
 
             public override void Visit(IAssembly assembly)

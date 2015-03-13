@@ -39,27 +39,22 @@ namespace Microsoft.CodeAnalysis
             DtdProcessing = DtdProcessing.Prohibit
         };
 
-        /// <exception cref="IOException"></exception>
-        /// <exception cref="XmlException"></exception>
-        /// <exception cref="InvalidOperationException"></exception>
+        /// <exception cref="IOException"/>
+        /// <exception cref="XmlException"/>
+        /// <exception cref="InvalidOperationException"/>
         private static KeyValuePair<string, XDocument> MakeValue(XmlReferenceResolver resolver, string resolvedPath)
         {
             CacheMissCount++;
 
             using (Stream stream = resolver.OpenReadChecked(resolvedPath))
+            using (XmlReader reader = XmlReader.Create(stream, s_xmlSettings))
             {
-                using (XmlReader reader = XmlReader.Create(stream, s_xmlSettings))
-                {
-                    var document = XDocument.Load(reader, LoadOptions.PreserveWhitespace | LoadOptions.SetLineInfo);
-                    return KeyValuePair.Create(resolvedPath, document);
-                }
+                var document = XDocument.Load(reader, LoadOptions.PreserveWhitespace | LoadOptions.SetLineInfo);
+                return KeyValuePair.Create(resolvedPath, document);
             }
         }
 
-        private static int KeyHashCode(string resolvedPath)
-        {
-            return resolvedPath.GetHashCode();
-        }
+        private static int KeyHashCode(string resolvedPath) => resolvedPath.GetHashCode();
 
         private static bool KeyValueEquality(string resolvedPath, KeyValuePair<string, XDocument> pathAndDocument)
         {

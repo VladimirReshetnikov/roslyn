@@ -7,7 +7,6 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
-using System;
 
 namespace Microsoft.CodeAnalysis.Diagnostics
 {
@@ -74,12 +73,8 @@ namespace Microsoft.CodeAnalysis.Diagnostics
 
         public bool IsDiagnosticSuppressed(Diagnostic diagnostic, ISymbol symbolOpt = null)
         {
-            if (symbolOpt != null && IsDiagnosticSuppressed(diagnostic.Id, symbolOpt))
-            {
-                return true;
-            }
-
-            return IsDiagnosticSuppressed(diagnostic.Id, diagnostic.Location);
+            return symbolOpt != null && IsDiagnosticSuppressed(diagnostic.Id, symbolOpt) ||
+                   IsDiagnosticSuppressed(diagnostic.Id, diagnostic.Location);
         }
 
         private bool IsDiagnosticSuppressed(string id, ISymbol symbol)
@@ -233,21 +228,17 @@ namespace Microsoft.CodeAnalysis.Diagnostics
                     continue;
                 }
 
-                string scopeString = info.Scope != null ? info.Scope.ToLowerInvariant() : null;
                 TargetScope scope;
-
-                if (s_suppressMessageScopeTypes.TryGetValue(scopeString, out scope))
-                {
-                    if ((scope == TargetScope.Module || scope == TargetScope.None) && info.Target == null)
-                    {
-                        // This suppression is applies to the entire compilation
-                        globalSuppressions.AddCompilationWideSuppression(info.Id);
-                        continue;
-                    }
-                }
-                else
+                if (!s_suppressMessageScopeTypes.TryGetValue(info.Scope?.ToLowerInvariant(), out scope))
                 {
                     // Invalid value for scope
+                    continue;
+                }
+
+                if ((scope == TargetScope.Module || scope == TargetScope.None) && info.Target == null)
+                {
+                    // This suppression is applies to the entire compilation
+                    globalSuppressions.AddCompilationWideSuppression(info.Id);
                     continue;
                 }
 
