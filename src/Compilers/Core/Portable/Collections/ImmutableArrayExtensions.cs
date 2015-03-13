@@ -25,7 +25,7 @@ namespace Microsoft.CodeAnalysis
         /// <remarks>If the sequence is null, this will throw <see cref="ArgumentNullException"/></remarks>
         public static ImmutableArray<T> AsImmutable<T>(this IEnumerable<T> items)
         {
-            return ImmutableArray.CreateRange<T>(items);
+            return ImmutableArray.CreateRange(items);
         }
 
         /// <summary>
@@ -42,7 +42,7 @@ namespace Microsoft.CodeAnalysis
                 return ImmutableArray<T>.Empty;
             }
 
-            return ImmutableArray.CreateRange<T>(items);
+            return ImmutableArray.CreateRange(items);
         }
 
         /// <summary>
@@ -59,7 +59,7 @@ namespace Microsoft.CodeAnalysis
                 return default(ImmutableArray<T>);
             }
 
-            return ImmutableArray.CreateRange<T>(items);
+            return ImmutableArray.CreateRange(items);
         }
 
         /// <summary>
@@ -71,7 +71,7 @@ namespace Microsoft.CodeAnalysis
         public static ImmutableArray<T> AsImmutable<T>(this T[] items)
         {
             Debug.Assert(items != null);
-            return ImmutableArray.Create<T>(items);
+            return ImmutableArray.Create(items);
         }
 
         /// <summary>
@@ -88,7 +88,7 @@ namespace Microsoft.CodeAnalysis
                 return default(ImmutableArray<T>);
             }
 
-            return ImmutableArray.Create<T>(items);
+            return ImmutableArray.Create(items);
         }
 
         /// <summary>
@@ -104,7 +104,7 @@ namespace Microsoft.CodeAnalysis
                 return ImmutableArray<T>.Empty;
             }
 
-            return ImmutableArray.Create<T>(items);
+            return ImmutableArray.Create(items);
         }
 
         /// <summary>
@@ -114,7 +114,7 @@ namespace Microsoft.CodeAnalysis
         /// <returns>Read-only content of the stream.</returns>
         public static ImmutableArray<byte> ToImmutable(this MemoryStream stream)
         {
-            return ImmutableArray.Create<byte>(stream.ToArray());
+            return ImmutableArray.Create(stream.ToArray());
         }
 
         /// <summary>
@@ -248,15 +248,14 @@ namespace Microsoft.CodeAnalysis
                 Debug.Assert(!none);
                 return builder.ToImmutableAndFree();
             }
-            else if (all)
+
+            if (all)
             {
                 return array;
             }
-            else
-            {
-                Debug.Assert(none);
-                return ImmutableArray<T>.Empty;
-            }
+
+            Debug.Assert(none);
+            return ImmutableArray<T>.Empty;
         }
 
         /// <summary>
@@ -283,7 +282,8 @@ namespace Microsoft.CodeAnalysis
             {
                 return array2.IsDefault;
             }
-            else if (array2.IsDefault)
+
+            if (array2.IsDefault)
             {
                 return false;
             }
@@ -296,11 +296,13 @@ namespace Microsoft.CodeAnalysis
             {
                 return count2 == 0;
             }
-            else if (count2 == 0)
+
+            if (count2 == 0)
             {
                 return false;
             }
-            else if (count1 == 1 && count2 == 1)
+
+            if (count1 == 1 && count2 == 1)
             {
                 var item1 = array1[0];
                 var item2 = array2[0];
@@ -377,10 +379,8 @@ namespace Microsoft.CodeAnalysis
                 copy[last] = temp;
                 return copy.AsImmutable();
             }
-            else
-            {
-                return array;
-            }
+
+            return array;
         }
 
         internal static ImmutableArray<TValue> Flatten<TKey, TValue>(

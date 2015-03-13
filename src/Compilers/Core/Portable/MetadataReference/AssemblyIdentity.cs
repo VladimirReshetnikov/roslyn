@@ -194,7 +194,7 @@ namespace Microsoft.CodeAnalysis
 
         private static bool IsValidName(string name)
         {
-            return !string.IsNullOrEmpty(name) && name.IndexOf('\0') < 0;
+            return name?.IndexOf('\0') == -1;
         }
 
         internal readonly static Version NullVersion = new Version(0, 0, 0, 0);
@@ -220,17 +220,17 @@ namespace Microsoft.CodeAnalysis
         /// <summary>
         /// The simple name of the assembly.
         /// </summary>
-        public string Name { get { return _name; } }
+        public string Name => _name;
 
         /// <summary>
         /// The version of the assembly.
         /// </summary>
-        public Version Version { get { return _version; } }
+        public Version Version => _version;
 
         /// <summary>
         /// The culture name of the assembly, or empty if the culture is neutral.
         /// </summary>
-        public string CultureName { get { return _cultureName; } }
+        public string CultureName => _cultureName;
 
         /// <summary>
         /// The AssemblyNameFlags.
@@ -248,26 +248,17 @@ namespace Microsoft.CodeAnalysis
         /// Specifies assembly binding model for the assembly definition or reference;
         /// that is how assembly references are matched to assembly definitions.
         /// </summary>
-        public AssemblyContentType ContentType
-        {
-            get { return _contentType; }
-        }
+        public AssemblyContentType ContentType => _contentType;
 
         /// <summary>
         /// True if the assembly identity includes full public key.
         /// </summary>
-        public bool HasPublicKey
-        {
-            get { return _publicKey.Length > 0; }
-        }
+        public bool HasPublicKey => _publicKey.Length > 0;
 
         /// <summary>
         /// Full public key or empty.
         /// </summary>
-        public ImmutableArray<byte> PublicKey
-        {
-            get { return _publicKey; }
-        }
+        public ImmutableArray<byte> PublicKey => _publicKey;
 
         /// <summary>
         /// Low 8 bytes of SHA1 hash of the public key, or empty.
@@ -302,10 +293,7 @@ namespace Microsoft.CodeAnalysis
         /// <summary>
         /// Gets the value which specifies if the assembly is retargetable. 
         /// </summary>
-        public bool IsRetargetable
-        {
-            get { return _isRetargetable; }
-        }
+        public bool IsRetargetable => _isRetargetable;
 
         internal static bool IsFullName(AssemblyIdentityParts parts)
         {
@@ -487,6 +475,7 @@ namespace Microsoft.CodeAnalysis
                 isRetargetable: (name.Flags & AssemblyNameFlags.Retargetable) != 0,
                 contentType: name.ContentType);
         }
+
         #endregion
     }
 }

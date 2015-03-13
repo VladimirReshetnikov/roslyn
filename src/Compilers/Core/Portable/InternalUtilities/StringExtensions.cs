@@ -209,11 +209,9 @@ namespace Roslyn.Utilities
                 quoted = true;
                 return arg.Substring(1, arg.Length - 2);
             }
-            else
-            {
-                quoted = false;
-                return arg;
-            }
+
+            quoted = false;
+            return arg;
         }
 
         internal static int IndexOfBalancedParenthesis(this string str, int openingOffset, char closing)

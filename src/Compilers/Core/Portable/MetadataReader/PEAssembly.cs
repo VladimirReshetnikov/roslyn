@@ -3,11 +3,10 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
+using System.Diagnostics;
 using System.Reflection.Metadata;
 using System.Threading;
 using Roslyn.Utilities;
-using System.Diagnostics;
 
 namespace Microsoft.CodeAnalysis
 {
@@ -17,25 +16,25 @@ namespace Microsoft.CodeAnalysis
         /// All assemblies this assembly references.
         /// </summary>
         /// <remarks>
-        /// A concatenation of assemblies referenced by each module in the order they are listed in <see cref="_modules"/>.
+        /// A concatenation of assemblies referenced by each module in the order they are listed in <see cref="Modules"/>.
         /// </remarks>
         internal readonly ImmutableArray<AssemblyIdentity> AssemblyReferences;
 
         /// <summary>
-        /// The number of assemblies referenced by each module in <see cref="_modules"/>.
+        /// The number of assemblies referenced by each module in <see cref="Modules"/>.
         /// </summary>
         internal readonly ImmutableArray<int> ModuleReferenceCounts;
 
-        private readonly ImmutableArray<PEModule> _modules;
+        internal ImmutableArray<PEModule> Modules { get; }
 
         /// <summary>
         /// Assembly identity read from Assembly table, or null if the table is empty.
         /// </summary>
-        private readonly AssemblyIdentity _identity;
+        internal AssemblyIdentity Identity { get; }
 
-        /// <summary>
+        /// <remarks>
         /// Using <see cref="ThreeState"/> for atomicity.
-        /// </summary>
+        /// </remarks>
         private ThreeState _lazyContainsNoPiaLocalTypes;
 
         private ThreeState _lazyDeclaresTheObjectClass;
@@ -53,7 +52,7 @@ namespace Microsoft.CodeAnalysis
             Debug.Assert(!modules.IsDefault);
             Debug.Assert(modules.Length > 0);
 
-            _identity = modules[0].ReadAssemblyIdentityOrThrow();
+            Identity = modules[0].ReadAssemblyIdentityOrThrow();
 
             var refs = ArrayBuilder<AssemblyIdentity>.GetInstance();
             int[] refCounts = new int[modules.Length];
@@ -65,40 +64,15 @@ namespace Microsoft.CodeAnalysis
                 refs.AddRange(refsForModule);
             }
 
-            _modules = modules;
+            Modules = modules;
             this.AssemblyReferences = refs.ToImmutableAndFree();
             this.ModuleReferenceCounts = refCounts.AsImmutableOrNull();
             _owner = owner;
         }
 
-        internal Handle Handle
-        {
-            get
-            {
-                return Handle.AssemblyDefinition;
-            }
-        }
+        internal Handle Handle => Handle.AssemblyDefinition;
 
-        internal PEModule ManifestModule
-        {
-            get { return Modules[0]; }
-        }
-
-        internal ImmutableArray<PEModule> Modules
-        {
-            get
-            {
-                return _modules;
-            }
-        }
-
-        internal AssemblyIdentity Identity
-        {
-            get
-            {
-                return _identity;
-            }
-        }
+        internal PEModule ManifestModule => Modules[0];
 
         internal bool ContainsNoPiaLocalTypes()
         {
@@ -167,7 +141,7 @@ namespace Microsoft.CodeAnalysis
             {
                 if (_lazyDeclaresTheObjectClass == ThreeState.Unknown)
                 {
-                    if (!_modules[0].FindSystemObjectTypeDef().IsNil)
+                    if (!Modules[0].FindSystemObjectTypeDef().IsNil)
                     {
                         _lazyDeclaresTheObjectClass = ThreeState.True;
                         return true;

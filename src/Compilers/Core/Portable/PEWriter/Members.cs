@@ -122,10 +122,7 @@ namespace Microsoft.Cci
         /// <summary>
         /// Mapped field data, or null if the field is not mapped.
         /// </summary>
-        ImmutableArray<byte> MappedData
-        {
-            get;
-        }
+        ImmutableArray<byte> MappedData { get; }
 
         /// <summary>
         /// This field is a compile-time constant. The field has no runtime location and cannot be directly addressed from IL.
@@ -194,7 +191,9 @@ namespace Microsoft.Cci
     /// A reference to a field.
     /// </summary>
     internal interface IFieldReference : ITypeMemberReference
-    { // TODO: add custom modifiers
+    { 
+        // TODO: add custom modifiers
+
         /// <summary>
         /// The type of value that is stored in this field.
         /// </summary>
@@ -205,18 +204,13 @@ namespace Microsoft.Cci
         /// </summary>
         IFieldDefinition GetResolvedField(EmitContext context);
 
-
         ISpecializedFieldReference AsSpecializedFieldReference { get; }
-
 
         /// <summary>
         /// True, if field is an IContextualNamedEntity, even if field reference implements the interface,
         /// doesn't mean it is contextual.
         /// </summary>
-        bool IsContextualNamedEntity
-        {
-            get;
-        }
+        bool IsContextualNamedEntity { get; }
     }
 
     /// <summary>
@@ -227,18 +221,12 @@ namespace Microsoft.Cci
         /// <summary>
         /// The compile time value of the definition, if it is a local constant.
         /// </summary>
-        IMetadataConstant CompileTimeValue
-        {
-            get;
-        }
+        IMetadataConstant CompileTimeValue { get; }
 
         /// <summary>
         /// Custom modifiers associated with local variable definition.
         /// </summary>
-        ImmutableArray<ICustomModifier> CustomModifiers
-        {
-            get;
-        }
+        ImmutableArray<ICustomModifier> CustomModifiers { get; }
 
         /// <summary>
         /// TODO: use <see cref="Constraints"/> instead.
@@ -359,17 +347,6 @@ namespace Microsoft.Cci
         /// is desired, the implementations of the Visit methods should do the subsequent dispatching.
         /// </summary>
         void Dispatch(MetadataVisitor visitor);
-
-        ///// <summary>
-        ///// Returns the IL operation that is located at the given offset. If no operation exists the given offset, Dummy.Operation is returned.
-        ///// The offset of the operation that follows the operation at the given offset is returned as the value of the second parameter.
-        ///// If the given offset is invalid, or is the offset of the last operation in the method body, offsetOfNextOperation will be set to -1.
-        ///// </summary>
-        ///// <param name="offset">The offset of the operation to be returned by this method.</param>
-        ///// <param name="offsetOfNextOperation">The offset of the operation that follows the one returned by this method. If no such operation exists, the value is -1.</param>
-        // IOperation GetOperationAt(int offset, out int offsetOfNextOperation);
-        //// ^ requires 0 <= offset;
-        //// ^ ensures offsetOfNextOperation == -1 || offsetOfNextOperation > offset;
 
         /// <summary>
         /// A list exception data within the method body IL.

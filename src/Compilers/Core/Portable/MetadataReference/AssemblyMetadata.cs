@@ -423,10 +423,7 @@ namespace Microsoft.CodeAnalysis
         /// <summary>
         /// Returns the metadata kind. <seealso cref="MetadataImageKind"/>
         /// </summary>
-        public override MetadataImageKind Kind
-        {
-            get { return MetadataImageKind.Assembly; }
-        }
+        public override MetadataImageKind Kind => MetadataImageKind.Assembly;
 
         /// <summary>
         /// Creates a reference to the assembly metadata.

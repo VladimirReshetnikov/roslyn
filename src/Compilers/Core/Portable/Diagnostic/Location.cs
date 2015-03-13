@@ -12,10 +12,6 @@ namespace Microsoft.CodeAnalysis
     [DebuggerDisplay("{GetDebuggerDisplay(), nq}")]
     public abstract class Location
     {
-        protected Location()
-        {
-        }
-
         /// <summary>
         /// Location kind (None/SourceFile/MetadataFile).
         /// </summary>
@@ -24,17 +20,17 @@ namespace Microsoft.CodeAnalysis
         /// <summary>
         /// Returns true if the location represents a specific location in a source code file.
         /// </summary>
-        public bool IsInSource { get { return SourceTree != null; } }
+        public bool IsInSource => SourceTree != null;
 
         /// <summary>
         /// Returns true if the location is in metadata.
         /// </summary>
-        public bool IsInMetadata { get { return MetadataModule != null; } }
+        public bool IsInMetadata => MetadataModule != null;
 
         /// <summary>
         /// The syntax tree this location is located in or <c>null</c> if not in a syntax tree.
         /// </summary>
-        public virtual SyntaxTree SourceTree { get { return null; } }
+        public virtual SyntaxTree SourceTree => null;
 
         /// <summary>
         /// Returns the metadata module the location is associated with or <c>null</c> if the module is not available.
@@ -43,7 +39,7 @@ namespace Microsoft.CodeAnalysis
         /// Might return null even if <see cref="IsInMetadata"/> returns true. The module symbol might not be available anymore, 
         /// for example, if the location is serialized and deserialized.
         /// </remarks>
-        public virtual IModuleSymbol MetadataModule { get { return null; } }
+        public virtual IModuleSymbol MetadataModule => null;
 
         /// <summary>
         /// The location within the syntax tree that this location is associated with.
@@ -51,7 +47,7 @@ namespace Microsoft.CodeAnalysis
         /// <remarks>
         /// If <see cref="IsInSource"/> returns False this method returns an empty <see cref="TextSpan"/> which starts at position 0.
         /// </remarks>
-        public virtual TextSpan SourceSpan { get { return default(TextSpan); } }
+        public virtual TextSpan SourceSpan => default(TextSpan);
 
         /// <summary>
         /// Gets the location in terms of path, line and column.
@@ -141,9 +137,9 @@ namespace Microsoft.CodeAnalysis
         }
 
         /// <summary>
-        /// A location of kind LocationKind.None. 
+        /// A location of kind <see cref="LocationKind.None"/>. 
         /// </summary>
-        public static Location None { get { return NoLocation.Singleton; } }
+        public static Location None => NoLocation.Singleton;
 
         /// <summary>
         /// Creates an instance of a <see cref="Location"/> for a span in a <see cref="SyntaxTree"/>.

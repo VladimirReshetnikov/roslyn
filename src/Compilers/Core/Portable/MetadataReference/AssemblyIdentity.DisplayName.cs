@@ -57,7 +57,7 @@ namespace Microsoft.CodeAnalysis
 
         private string BuildDisplayName(bool fullKey)
         {
-            PooledStringBuilder pooledBuilder = PooledStringBuilder.GetInstance();
+            var pooledBuilder = PooledStringBuilder.GetInstance();
             var sb = pooledBuilder.Builder;
             EscapeName(sb, Name);
 

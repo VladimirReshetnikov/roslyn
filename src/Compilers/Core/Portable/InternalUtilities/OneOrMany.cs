@@ -2,8 +2,7 @@
 
 using System;
 using System.Collections.Immutable;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Text;
+using System.Runtime.InteropServices;
 
 namespace Roslyn.Utilities
 {
@@ -13,6 +12,7 @@ namespace Roslyn.Utilities
     /// <remarks>
     /// Used when a collection usually contains a single item but sometimes might contain multiple.
     /// </remarks>
+    [StructLayout(LayoutKind.Auto)]
     internal struct OneOrMany<T>
     {
         private readonly T _one;
@@ -39,41 +39,27 @@ namespace Roslyn.Utilities
         {
             get
             {
-                if (_many.IsDefault)
-                {
-                    if (index != 0)
-                    {
-                        throw new IndexOutOfRangeException();
-                    }
-
-                    return _one;
-                }
-                else
+                if (!_many.IsDefault)
                 {
                     return _many[index];
                 }
+
+                if (index != 0)
+                {
+                    throw new IndexOutOfRangeException();
+                }
+
+                return _one;
             }
         }
 
-        public int Count
-        {
-            get
-            {
-                return _many.IsDefault ? 1 : _many.Length;
-            }
-        }
+        public int Count => _many.IsDefault ? 1 : _many.Length;
     }
 
     internal static class OneOrMany
     {
-        public static OneOrMany<T> Create<T>(T one)
-        {
-            return new OneOrMany<T>(one);
-        }
+        public static OneOrMany<T> Create<T>(T one) => new OneOrMany<T>(one);
 
-        public static OneOrMany<T> Create<T>(ImmutableArray<T> many)
-        {
-            return new OneOrMany<T>(many);
-        }
+        public static OneOrMany<T> Create<T>(ImmutableArray<T> many) => new OneOrMany<T>(many);
     }
 }
