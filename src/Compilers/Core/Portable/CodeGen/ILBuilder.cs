@@ -4,8 +4,6 @@ using System;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Reflection;
-using Microsoft.Cci;
-using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis.Text;
 using Roslyn.Utilities;
 
@@ -21,7 +19,7 @@ namespace Microsoft.CodeAnalysis.CodeGen
         // internal for testing
         internal readonly ITokenDeferral module;
 
-        //leader block is the entry point of the method body
+        // leader block is the entry point of the method body
         internal readonly BasicBlock leaderBlock;
 
         private EmitState _emitState;
@@ -48,18 +46,20 @@ namespace Microsoft.CodeAnalysis.CodeGen
         /// don't know the actual IL offset, but only {block/offset-in-the-block} pair. 
         /// 
         /// Thus, whenever we need to mark some IL position we allocate a new marker id, store it 
-        /// in allocatedILMarkers and reference this IL marker in the entity requiring the IL offset.
+        /// in <see cref="_allocatedILMarkers"/> and reference this IL marker in the entity requiring the IL offset.
         /// 
         /// IL markers will be 'materialized' when the builder is realized; the resulting offsets
-        /// will be put into allocatedILMarkers array. Note that only markers from reachable blocks 
+        /// will be put into <see cref="_allocatedILMarkers"/> array. Note that only markers from reachable blocks 
         /// are materialized, the rest will have offset -1.
         /// </summary>
-        private ArrayBuilder<ILMarker> _allocatedILMarkers = null;
+        private ArrayBuilder<ILMarker> _allocatedILMarkers;
 
-        // Since blocks are created lazily in GetCurrentBlock,
-        // pendingBlockCreate is set to true when a block must be
-        // created, in particular for leader blocks in exception handlers.
-        private bool _pendingBlockCreate = false;
+        /// <remarks>
+        /// Since blocks are created lazily in <see cref="GetCurrentBlock"/>,
+        /// <see cref="_pendingBlockCreate"/> is set to true when a block must be
+        /// created, in particular for leader blocks in exception handlers.
+        /// </remarks>
+        private bool _pendingBlockCreate;
 
         internal ILBuilder(ITokenDeferral module, LocalSlotManager localSlotManager, OptimizationLevel optimizations)
         {
@@ -140,7 +140,7 @@ namespace Microsoft.CodeAnalysis.CodeGen
 
         private void ReconcileTrailingMarkers()
         {
-            //  there is a chance that 'lastCompleteBlock' may have an IL marker
+            //  there is a chance that '_lastCompleteBlock' may have an IL marker
             //  placed at the end of it such that block offset of the marker points
             //  to the next byte *after* the block is closed. In this case the marker 
             //  should be moved to the next block
@@ -161,6 +161,7 @@ namespace Microsoft.CodeAnalysis.CodeGen
                     {
                         endMarker = _lastCompleteBlock.LastILMarker;
                     }
+
                     _lastCompleteBlock.RemoveTailILMarker(_lastCompleteBlock.LastILMarker);
                 }
 
@@ -168,7 +169,7 @@ namespace Microsoft.CodeAnalysis.CodeGen
                 for (int marker = startMarker; marker <= endMarker; marker++)
                 {
                     current.AddILMarker(marker);
-                    _allocatedILMarkers[marker] = new ILMarker() { BlockOffset = (int)current.RegularInstructionsLength, AbsoluteOffset = -1 };
+                    _allocatedILMarkers[marker] = new ILMarker { BlockOffset = (int)current.RegularInstructionsLength, AbsoluteOffset = -1 };
                 }
             }
         }
@@ -256,6 +257,7 @@ namespace Microsoft.CodeAnalysis.CodeGen
             {
                 MarkReachableFrom(reachableBlocks, reachableBlocks.Pop());
             }
+
             reachableBlocks.Free();
         }
 
@@ -272,32 +274,32 @@ namespace Microsoft.CodeAnalysis.CodeGen
         /// </summary>
         private static void MarkReachableFrom(ArrayBuilder<BasicBlock> reachableBlocks, BasicBlock block)
         {
-        tryAgain:
-
-            if (block != null && block.Reachability == Reachability.NotReachable)
+            while (true)
             {
+                if (block == null || block.Reachability != Reachability.NotReachable)
+                {
+                    return;
+                }
+
                 block.Reachability = Reachability.Reachable;
 
                 var branchCode = block.BranchCode;
                 if (branchCode == ILOpCode.Nop && block.Type == BlockType.Normal)
                 {
                     block = block.NextBlock;
-                    goto tryAgain;
+                    continue;
                 }
 
                 if (branchCode.CanFallThrough())
                 {
                     PushReachableBlockToProcess(reachableBlocks, block.NextBlock);
                 }
-                else
+                else if (branchCode == ILOpCode.Endfinally)
                 {
                     // If this block is an "endfinally" block, then clear
                     // the reachability of the following special block.
-                    if (branchCode == ILOpCode.Endfinally)
-                    {
-                        var enclosingFinally = block.EnclosingHandler;
-                        enclosingFinally?.UnblockFinally();
-                    }
+                    var enclosingFinally = block.EnclosingHandler;
+                    enclosingFinally?.UnblockFinally();
                 }
 
                 switch (block.Type)
@@ -314,6 +316,8 @@ namespace Microsoft.CodeAnalysis.CodeGen
                         MarkReachableFromBranch(reachableBlocks, block);
                         break;
                 }
+
+                return;
             }
         }
 
@@ -881,7 +885,7 @@ namespace Microsoft.CodeAnalysis.CodeGen
                     {
                         int blockOffset = _allocatedILMarkers[i].BlockOffset;
                         int absoluteOffset = (int)realizedIlBitStream.Position + blockOffset;
-                        _allocatedILMarkers[i] = new ILMarker() { BlockOffset = blockOffset, AbsoluteOffset = absoluteOffset };
+                        _allocatedILMarkers[i] = new ILMarker { BlockOffset = blockOffset, AbsoluteOffset = absoluteOffset };
                     }
                 }
 
@@ -1236,7 +1240,7 @@ namespace Microsoft.CodeAnalysis.CodeGen
             curBlock.AddILMarker(marker);
 
             _allocatedILMarkers.Add(
-                new ILMarker()
+                new ILMarker
                 {
                     BlockOffset = (int)curBlock.RegularInstructionsLength,
                     AbsoluteOffset = -1

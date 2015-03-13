@@ -854,7 +854,7 @@ namespace Microsoft.CodeAnalysis.Diagnostics
                 }
 
                 yield return
-                    new CodeBlockAnalyzerActions()
+                    new CodeBlockAnalyzerActions
                     {
                         Analyzer = analyzerAndActions.Key,
                         CodeBlockStartActions = analyzerAndActions.Value,
@@ -877,7 +877,7 @@ namespace Microsoft.CodeAnalysis.Diagnostics
                     }
 
                     yield return
-                        new CodeBlockAnalyzerActions()
+                        new CodeBlockAnalyzerActions
                         {
                             Analyzer = analyzerAndActions.Key,
                             CodeBlockStartActions = ImmutableArray<CodeBlockStartAnalyzerAction<TLanguageKindEnum>>.Empty,
@@ -895,7 +895,7 @@ namespace Microsoft.CodeAnalysis.Diagnostics
                 if (!CodeBlockStartActionsByAnalyzer.ContainsKey(analyzerAndActions.Key) && !CodeBlockActionsByAnalyzer.ContainsKey(analyzerAndActions.Key))
                 {
                     yield return
-                        new CodeBlockAnalyzerActions()
+                        new CodeBlockAnalyzerActions
                         {
                             Analyzer = analyzerAndActions.Key,
                             CodeBlockStartActions = ImmutableArray<CodeBlockStartAnalyzerAction<TLanguageKindEnum>>.Empty,

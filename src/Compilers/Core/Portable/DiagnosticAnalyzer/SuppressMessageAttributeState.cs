@@ -13,8 +13,8 @@ namespace Microsoft.CodeAnalysis.Diagnostics
 {
     internal partial class SuppressMessageAttributeState
     {
-        private static readonly SmallDictionary<string, TargetScope> s_suppressMessageScopeTypes = new SmallDictionary<string, TargetScope>()
-            {
+        private static readonly SmallDictionary<string, TargetScope> s_suppressMessageScopeTypes = new SmallDictionary<string, TargetScope>
+        {
                 { null, TargetScope.None },
                 { "module", TargetScope.Module },
                 { "namespace", TargetScope.Namespace },

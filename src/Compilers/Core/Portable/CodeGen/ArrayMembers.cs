@@ -15,35 +15,35 @@ using EmitContext = Microsoft.CodeAnalysis.Emit.EmitContext;
 //
 //=========================
 //
-//  14.2 Arrays  (From partition II) -
-//The class that the VES creates for arrays contains several methods whose implementation is supplied by the
-//VES:
-//
-//* A constructor that takes a sequence of int32 arguments, one for each dimension of the array, that specify
-//the number of elements in each dimension beginning with the first dimension. A lower bound of zero is
-//assumed.
-//
-//* A constructor that takes twice as many int32 arguments as there are dimensions of the array. These
-//arguments occur in pairs—one pair per dimension—with the first argument of each pair specifying the
-//lower bound for that dimension, and the second argument specifying the total number of elements in that
-//dimension. Note that vectors are not created with this constructor, since a zero lower bound is assumed for
-//vectors.
-//
-//* A Get method that takes a sequence of int32 arguments, one for each dimension of the array, and returns
-//a value whose type is the element type of the array. This method is used to access a specific element of the
-//array where the arguments specify the index into each dimension, beginning with the first, of the element
-//to be returned.
-//
-//* A Set method that takes a sequence of int32 arguments, one for each dimension of the array, followed by
-//a value whose type is the element type of the array. The return type of Set is void. This method is used to
-//set a specific element of the array where the arguments specify the index into each dimension, beginning
-//with the first, of the element to be set and the final argument specifies the value to be stored into the target
-//element.
-//
-//* An Address method that takes a sequence of int32 arguments, one for each dimension of the array, and
-//has a return type that is a managed pointer to the array‘s element type. This method is used to return a
-//managed pointer to a specific element of the array where the arguments specify the index into each
-//dimension, beginning with the first, of the element whose address is to be returned.
+//   14.2 Arrays  (From partition II) -
+// The class that the VES creates for arrays contains several methods whose implementation is supplied by the
+// VES:
+// 
+// * A constructor that takes a sequence of int32 arguments, one for each dimension of the array, that specify
+// the number of elements in each dimension beginning with the first dimension. A lower bound of zero is
+// assumed.
+// 
+// * A constructor that takes twice as many int32 arguments as there are dimensions of the array. These
+// arguments occur in pairs—one pair per dimension—with the first argument of each pair specifying the
+// lower bound for that dimension, and the second argument specifying the total number of elements in that
+// dimension. Note that vectors are not created with this constructor, since a zero lower bound is assumed for
+// vectors.
+// 
+// * A Get method that takes a sequence of int32 arguments, one for each dimension of the array, and returns
+// a value whose type is the element type of the array. This method is used to access a specific element of the
+// array where the arguments specify the index into each dimension, beginning with the first, of the element
+// to be returned.
+// 
+// * A Set method that takes a sequence of int32 arguments, one for each dimension of the array, followed by
+// a value whose type is the element type of the array. The return type of Set is void. This method is used to
+// set a specific element of the array where the arguments specify the index into each dimension, beginning
+// with the first, of the element to be set and the final argument specifies the value to be stored into the target
+// element.
+// 
+// * An Address method that takes a sequence of int32 arguments, one for each dimension of the array, and
+// has a return type that is a managed pointer to the array's element type. This method is used to return a
+// managed pointer to a specific element of the array where the arguments specify the index into each
+// dimension, beginning with the first, of the element whose address is to be returned.
 
 namespace Microsoft.CodeAnalysis.CodeGen
 {
@@ -58,10 +58,10 @@ namespace Microsoft.CodeAnalysis.CodeGen
         // They are specific to a given array type
         private enum ArrayMethodKind : byte
         {
-            GET,
-            SET,
-            ADDRESS,
-            CTOR,
+            Get,
+            Set,
+            Address,
+            Ctor,
         }
 
         /// <summary>
@@ -69,26 +69,26 @@ namespace Microsoft.CodeAnalysis.CodeGen
         /// </summary>
         public ArrayMethod GetArrayConstructor(Cci.IArrayTypeReference arrayType)
         {
-            return GetArrayMethod(arrayType, ArrayMethodKind.CTOR);
+            return GetArrayMethod(arrayType, ArrayMethodKind.Ctor);
         }
 
         /// <summary>
         /// Acquires an element getter method for a given array type
         /// </summary>
         public ArrayMethod GetArrayGet(Cci.IArrayTypeReference arrayType)
-            => GetArrayMethod(arrayType, ArrayMethodKind.GET);
+            => GetArrayMethod(arrayType, ArrayMethodKind.Get);
 
         /// <summary>
         /// Acquires an element setter method for a given array type
         /// </summary>
         public ArrayMethod GetArraySet(Cci.IArrayTypeReference arrayType)
-            => GetArrayMethod(arrayType, ArrayMethodKind.SET);
+            => GetArrayMethod(arrayType, ArrayMethodKind.Set);
 
         /// <summary>
         /// Acquires an element referencer method for a given array type
         /// </summary>
         public ArrayMethod GetArrayAddress(Cci.IArrayTypeReference arrayType)
-            => GetArrayMethod(arrayType, ArrayMethodKind.ADDRESS);
+            => GetArrayMethod(arrayType, ArrayMethodKind.Address);
 
         /// <summary>
         /// Maps {array type, method kind} tuples to implementing pseudo-methods.
@@ -97,7 +97,7 @@ namespace Microsoft.CodeAnalysis.CodeGen
             new ConcurrentDictionary<ValueTuple<byte, Cci.IArrayTypeReference>, ArrayMethod>();
 
         /// <summary>
-        /// lazily fetches or creates a new array method.
+        /// Lazily fetches or creates a new array method.
         /// </summary>
         private ArrayMethod GetArrayMethod(Cci.IArrayTypeReference arrayType, ArrayMethodKind id)
         {
@@ -118,16 +118,16 @@ namespace Microsoft.CodeAnalysis.CodeGen
         {
             switch (id)
             {
-                case ArrayMethodKind.CTOR:
+                case ArrayMethodKind.Ctor:
                     return new ArrayConstructor(arrayType);
 
-                case ArrayMethodKind.GET:
+                case ArrayMethodKind.Get:
                     return new ArrayGet(arrayType);
 
-                case ArrayMethodKind.SET:
+                case ArrayMethodKind.Set:
                     return new ArraySet(arrayType);
 
-                case ArrayMethodKind.ADDRESS:
+                case ArrayMethodKind.Address:
                     return new ArrayAddress(arrayType);
             }
 
@@ -136,8 +136,8 @@ namespace Microsoft.CodeAnalysis.CodeGen
 
 
         /// <summary>
-        /// "newobj ArrayConstructor"  is equivalent of "newarr ElementType" 
-        /// when working with multidimentsional arrays
+        /// "newobj ArrayConstructor" is equivalent of "newarr ElementType" 
+        /// when working with multidimentsional arrays.
         /// </summary>
         private sealed class ArrayConstructor : ArrayMethod
         {
@@ -150,8 +150,8 @@ namespace Microsoft.CodeAnalysis.CodeGen
         }
 
         /// <summary>
-        /// "call ArrayGet"  is equivalent of "ldelem ElementType" 
-        /// when working with multidimentsional arrays
+        /// "call ArrayGet" is equivalent of "ldelem ElementType" 
+        /// when working with multidimentsional arrays.
         /// </summary>
         private sealed class ArrayGet : ArrayMethod
         {
@@ -164,8 +164,8 @@ namespace Microsoft.CodeAnalysis.CodeGen
         }
 
         /// <summary>
-        /// "call ArrayAddress"  is equivalent of "ldelema ElementType" 
-        /// when working with multidimentsional arrays
+        /// "call ArrayAddress" is equivalent of "ldelema ElementType" 
+        /// when working with multidimentsional arrays.
         /// </summary>
         private sealed class ArrayAddress : ArrayMethod
         {
@@ -180,8 +180,8 @@ namespace Microsoft.CodeAnalysis.CodeGen
         }
 
         /// <summary>
-        /// "call ArraySet"  is equivalent of "stelem ElementType" 
-        /// when working with multidimentsional arrays
+        /// "call ArraySet" is equivalent of "stelem ElementType" 
+        /// when working with multidimentsional arrays.
         /// </summary>
         private sealed class ArraySet : ArrayMethod
         {
@@ -211,7 +211,7 @@ namespace Microsoft.CodeAnalysis.CodeGen
     /// <summary>
     /// Represents a parameter in an array pseudo-method.
     /// 
-    /// NOTE: It appears that that only number of indeces is used for verification, 
+    /// NOTE: It appears that that only number of indices is used for verification, 
     /// types just have to be Int32.
     /// Even though actual arguments can be native ints.
     /// </summary>
@@ -339,23 +339,17 @@ namespace Microsoft.CodeAnalysis.CodeGen
         public ImmutableArray<Cci.ICustomModifier> ReturnValueCustomModifiers
             => ImmutableArray<Cci.ICustomModifier>.Empty;
 
-        public Cci.ITypeReference GetContainingType(EmitContext context)
-        {
-            // We are not translating arrayType. 
-            // It is an array type and it is never generic or contained in a generic.
-            return this.arrayType;
-        }
+        // We are not translating arrayType. 
+        // It is an array type and it is never generic or contained in a generic.
+        public Cci.ITypeReference GetContainingType(EmitContext context) => this.arrayType;
 
         public IEnumerable<Cci.ICustomAttribute> GetAttributes(EmitContext context)
             => SpecializedCollections.EmptyEnumerable<Cci.ICustomAttribute>();
 
-        public void Dispatch(Cci.MetadataVisitor visitor)
-            => visitor.Visit(this);
+        public void Dispatch(Cci.MetadataVisitor visitor) => visitor.Visit(this);
 
-        public Cci.IDefinition AsDefinition(EmitContext context)
-            => null;
+        public Cci.IDefinition AsDefinition(EmitContext context) => null;
 
-        public override string ToString()
-            => arrayType.ToString() + "." + Name;
+        public override string ToString() => arrayType + "." + Name;
     }
 }

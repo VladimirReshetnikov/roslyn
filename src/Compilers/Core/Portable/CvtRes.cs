@@ -84,7 +84,7 @@ namespace Microsoft.CodeAnalysis
                     continue;
                 }
 
-                var pAdditional = new RESOURCE()
+                var pAdditional = new RESOURCE
                 {
                     HeaderSize = cbHdr,
                     DataSize = cbData

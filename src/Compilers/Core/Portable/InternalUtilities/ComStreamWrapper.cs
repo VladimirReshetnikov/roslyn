@@ -50,7 +50,7 @@ namespace Roslyn.Utilities
 
         public void Stat(out STATSTG pstatstg, int grfStatFlag)
         {
-            pstatstg = new STATSTG()
+            pstatstg = new STATSTG
             {
                 cbSize = _stream.Length
             };
